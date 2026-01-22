@@ -1,2 +1,5 @@
 __pycache__
 test_output
+data
+*.egg-info
+build
