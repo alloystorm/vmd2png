@@ -18,17 +18,86 @@ def uint16_to_float(data, min_val, max_val):
 def save_as_png_16bit(data, output_path, min_val=-20.0, max_val=20.0):
     if data is None or data.size == 0:
         return
-    uint16_data = float_to_uint16(data, min_val, max_val)
-    img = Image.fromarray(uint16_data, mode='I;16')
+        
+    # Flatten data to 1D stream of values
+    flat_data = data.flatten()
+    
+    # Pad to multiple of 4 (RGBA)
+    remainder = len(flat_data) % 4
+    if remainder != 0:
+        padding = 4 - remainder
+        flat_data = np.pad(flat_data, (0, padding), mode='constant', constant_values=0)
+        
+    # Group into pixels (N, 4)
+    pixels = flat_data.reshape(-1, 4)
+    
+    # Calculate image dimensions
+    total_pixels = len(pixels)
+    max_width = 1024
+    
+    if total_pixels <= max_width:
+        width = total_pixels
+        height = 1
+    else:
+        width = max_width
+        height = (total_pixels + max_width - 1) // max_width
+        
+    # Pad pixels to fill the image rectangle
+    total_slots = width * height
+    if total_slots > total_pixels:
+        pixel_pad = total_slots - total_pixels
+        pixels = np.pad(pixels, ((0, pixel_pad), (0, 0)), mode='constant', constant_values=0)
+        
+    # Reshape to (H, W, 4)
+    img_data_float = pixels.reshape(height, width, 4)
+    
+    # Convert to uint16
+    img_data_uint16 = float_to_uint16(img_data_float, min_val, max_val)
+    
+    # OpenCV expects BGRA for 4-channel images, but we want to map logically
+    # R=0, G=1, B=2, A=3. If we want raw data preservation order:
+    # If we write [0, 1, 2, 3] via imwrite, it writes B=0, G=1, R=2, A=3?
+    # No, imwrite expects [B, G, R, A].
+    # So if our data is [v1, v2, v3, v4], and we want v1 in R, v2 in G, v3 in B, v4 in A:
+    # We should pass [v3, v2, v1, v4] to imwrite.
+    # HOWEVER, if we simple want to store data and retrieve it SAME ORDER:
+    # We can just ignore the color channel meaning. Write [v1, v2, v3, v4] as BGRA, read as BGRA -> [v1, v2, v3, v4].
+    # So we don't need to permute.
+    
+    import cv2
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    img.save(output_path)
+    success = cv2.imwrite(output_path, img_data_uint16)
+    if not success:
+        print(f"Failed to write image to {output_path}")
 
 def load_from_png_16bit(file_path, min_val=-20.0, max_val=20.0):
-    img = Image.open(file_path)
-    if img.mode != 'I;16':
-        raise ValueError(f"Expected I;16 mode PNG, got {img.mode}")
-    arr = np.array(img)
-    return uint16_to_float(arr, min_val, max_val)
+    import cv2
+    img = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
+    if img is None:
+        raise ValueError(f"Failed to load image: {file_path}")
+        
+    # Expect 4 channels, uint16
+    if img.dtype != np.uint16:
+        # If it loaded as uint8 (e.g. min/max val small), convert? 
+        # But imread(..., UNCHANGED) should preserve depth if PNG is 16bit.
+        # If the file wasn't 16bit, this might be an issue.
+        # But we assume we wrote it as 16bit.
+        if img.dtype == np.uint8:
+             img = (img.astype(np.float32) * 257).astype(np.uint16) # Scale up? Or just cast? 
+             # Usually 8bit PNGs scale 0-255. 16bit is 0-65535. 
+             # 255 * 257 = 65535.
+             pass
+    
+    # If standard BGR loaded (3 channels) or Gray (1 channel), handle?
+    # We expect 4 channels for our data format.
+    if len(img.shape) == 2: # Grayscale
+        # Treat as 1 channel stream?
+        img = img.reshape(img.shape[0], img.shape[1], 1)
+        
+    # Flatten to get the stream of values
+    flat_data = img.flatten()
+    
+    return uint16_to_float(flat_data, min_val, max_val)
 
 def export_vmd_to_files(vmd_path, output_dir, png_scale_pos=20.0):
     results = vmd_to_motion_data(vmd_path, verbose=False)
@@ -65,7 +134,26 @@ def load_motion_dict(input_path, mode='character'):
         data = np.load(input_path)
     elif ext == '.png':
         scale = 50.0 if mode == 'camera' else 20.0
-        data = load_from_png_16bit(input_path, -scale, scale)
+        flat_data = load_from_png_16bit(input_path, -scale, scale)
+        
+        # We need to reshape the flat data back into frames
+        if mode == 'camera':
+            stride = 8 # Pos(3) + FOV(1) + Rot(4)
+        else:
+            root, _ = build_standard_skeleton()
+            bones = root.export_bones()
+            # Stride = Center(3) + Scale(1) + Bones(N)*4
+            stride = 4 + len(bones) * 4
+            
+        # Calculate number of frames
+        # Use integer division, ignore trailing padding zeros if any
+        num_frames = len(flat_data) // stride
+        if num_frames == 0:
+            return None
+            
+        # Truncate to exact multiple
+        data = flat_data[:num_frames * stride]
+        data = data.reshape(num_frames, stride)
     else:
         print("Unsupported format")
         return None
