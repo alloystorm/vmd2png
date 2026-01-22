@@ -1,4 +1,4 @@
-# Motion VMD Utils
+# vmd2png
 
 A Python utility library for processing MikuMikuDance (MMD) VMD motion files.
 
