@@ -24,4 +24,7 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/alloystorm/motion_vmd_utils"
+"Homepage" = "https://github.com/alloystorm/vmd2png"
+
+[project.scripts]
+vmd2png = "vmd2png.cli:main"

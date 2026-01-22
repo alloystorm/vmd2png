@@ -16,6 +16,26 @@ A Python utility library for processing MikuMikuDance (MMD) VMD motion files.
 pip install .
 ```
 
-## Usage
+## CLI Usage
 
-(Coming soon)
+The package provides a `vmd2png` command line tool.
+
+### Preview
+Preview a VMD, PNG, or NPY file in 3D:
+```bash
+vmd2png preview path/to/motion.vmd
+vmd2png preview path/to/motion.png --mode character
+```
+
+### Convert
+Convert VMD to extracted files (PNG/NPY):
+```bash
+vmd2png convert path/to/file.vmd -o output_dir
+```
+
+Convert PNG/NPY back to VMD:
+```bash
+vmd2png convert path/to/file.png -o output.vmd --mode character
+```
+
+## Python Usage
