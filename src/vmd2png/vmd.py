@@ -327,7 +327,6 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
     camera_data = []
     cam_frames_dict = {f["frame_num"]: f for f in anim["camera_frames"]}
     
-    start_center_pos = np.zeros(3)
     firstFrame = True
 
     if verbose: print(f"Processing {totalFrames} frames...")
@@ -341,14 +340,13 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
             start_center_pos = center.globalPos.copy()
 
         # Character
-        groundPos = center.groundPos(center.globalPos)
         centerPos = center.globalPos.copy()
         
         frame_char = []
         # Format: Center Offset(3) + Scale(1)? + Bones...
-        frame_char.extend(centerPos - start_center_pos)
+        frame_char.extend(centerPos)
         frame_char.append(1.0)
-        frame_char.extend(root.export_data(groundPos, mode=mode))
+        frame_char.extend(root.export_data(mode=mode))
         character_data.append(frame_char)
         
         # Camera

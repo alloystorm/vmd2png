@@ -160,19 +160,19 @@ class Bone:
             quat = -quat
         self.quat = quat
 
-    def export_data(self, centerPos, mode='pos', withOptional=True):
+    def export_data(self, mode='pos', withOptional=True):
         data = []
         if not self.isOptional or withOptional:
             # if self.name == "Center":
             #     data.extend(self.groundPos(self.globalPos) - self.groundPos(self.last_pos))
             if mode == 'pos':
-                data.extend(self.globalPos - centerPos)
+                data.extend(self.globalPos)
             if mode == 'global':
                 data.extend(self.globalQuat)
             elif mode == 'local':
                 data.extend(self.quat)
         for child in self.children:
-            data.extend(child.export_data(centerPos, mode))
+            data.extend(child.export_data(mode))
         return data
 
     def export_bones(self, withOptional=True):
