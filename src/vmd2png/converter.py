@@ -70,7 +70,7 @@ def save_as_png_16bit(data, output_path, min_val=-20.0, max_val=20.0):
     if not success:
         print(f"Failed to write image to {output_path}")
 
-def load_from_png_16bit(file_path, min_val=-20.0, max_val=20.0):
+def load_from_png_16bit(file_path, min_val, max_val):
     import cv2
     img = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
     if img is None:
@@ -99,7 +99,7 @@ def load_from_png_16bit(file_path, min_val=-20.0, max_val=20.0):
     
     return uint16_to_float(flat_data, min_val, max_val)
 
-def export_vmd_to_files(vmd_path, output_dir, png_scale_pos=20.0):
+def export_vmd_to_files(vmd_path, output_dir):
     results = vmd_to_motion_data(vmd_path, verbose=False)
     if not results:
         print(f"Failed to extract info from {vmd_path}")
@@ -111,12 +111,12 @@ def export_vmd_to_files(vmd_path, output_dir, png_scale_pos=20.0):
     if results['character'] is not None:
         c_data = results['character']
         np.save(os.path.join(output_dir, f"{name}_character.npy"), c_data)
-        save_as_png_16bit(c_data, os.path.join(output_dir, f"{name}_character.png"), -png_scale_pos, png_scale_pos)
+        save_as_png_16bit(c_data, os.path.join(output_dir, f"{name}_character.png"), -1, 1)
         
     if results['camera'] is not None:
         cam_data = results['camera']
         np.save(os.path.join(output_dir, f"{name}_camera.npy"), cam_data)
-        save_as_png_16bit(cam_data, os.path.join(output_dir, f"{name}_camera.png"), -50.0, 50.0)
+        save_as_png_16bit(cam_data, os.path.join(output_dir, f"{name}_camera.png"), -1, 1)
         
     return True
 
@@ -133,7 +133,7 @@ def load_motion_dict(input_path, mode='character'):
     if ext == '.npy':
         data = np.load(input_path)
     elif ext == '.png':
-        scale = 50.0 if mode == 'camera' else 20.0
+        scale = 1.0 #50.0 if mode == 'camera' else 20.0
         flat_data = load_from_png_16bit(input_path, -scale, scale)
         
         # We need to reshape the flat data back into frames
