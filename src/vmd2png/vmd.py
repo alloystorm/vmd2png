@@ -334,7 +334,7 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
         center.update_world_pos()
 
         # Character
-        centerPos = center.globalPos.copy()
+        centerPos = center.globalPos.copy() - center.zeroPos
         
         frame_char = []
         # Format: Center Offset(3) + Scale(1)? + Bones...

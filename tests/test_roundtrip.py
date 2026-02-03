@@ -34,7 +34,7 @@ def test_pipeline():
         frame = {
             "frame_num": i,
             "dist": 10.0,
-            "position": (0, 1, 0),
+            "position": (0, i * 0.1, 0),
             "rotation": (0, 0, 0, 1),
             "fov": 30,
             "bezier": bytearray([20]*24)
