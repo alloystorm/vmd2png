@@ -163,8 +163,8 @@ def load_motion_dict(input_path, mode='character'):
     if mode == 'camera':
         for i in range(len(data)):
             row = data[i]
-            pos = row[0:3]
-            fov = row[3]
+            pos = row[0:3] * 32768 / 1000
+            fov = row[3] * 6
             rot = row[4:8]
             
             frame = {
@@ -192,7 +192,7 @@ def load_motion_dict(input_path, mode='character'):
                     curr += 4
                     pos = (0,0,0)
                     if bone.name == "Center":
-                        pos = tuple(row[0:3])
+                        pos = tuple(row[0:3] * 32768 / 1000)
                     
                     frame = {
                         "name": bone.name,

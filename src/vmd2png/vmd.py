@@ -327,24 +327,18 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
     camera_data = []
     cam_frames_dict = {f["frame_num"]: f for f in anim["camera_frames"]}
     
-    firstFrame = True
-
     if verbose: print(f"Processing {totalFrames} frames...")
 
     for frame in range(totalFrames):
         animate_skeleton(root, frame)
         center.update_world_pos()
 
-        if firstFrame:
-            firstFrame = False
-            start_center_pos = center.globalPos.copy()
-
         # Character
         centerPos = center.globalPos.copy()
         
         frame_char = []
         # Format: Center Offset(3) + Scale(1)? + Bones...
-        frame_char.extend(centerPos)
+        frame_char.extend(centerPos * 1000 / 32768)
         frame_char.append(1.0)
         frame_char.extend(root.export_data(mode=mode))
         character_data.append(frame_char)
@@ -367,12 +361,12 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
             forward = rot_mat[:, 2]
             cam_pos = look_at + forward * dist
             
-            frame_cam.extend(cam_pos)
-            frame_cam.append(float(cf["fov"]))
+            frame_cam.extend(cam_pos * 1000 / 32768)
+            frame_cam.append(float(cf["fov"]) / 180)
             frame_cam.extend(rot)
         else:
-            frame_cam.extend([0,0,5])
-            frame_cam.append(30.0)
+            frame_cam.extend([0,0.03,0.1])
+            frame_cam.append(30.0 / 180)
             frame_cam.extend([0,0,0,1])
         camera_data.append(frame_cam)
         
