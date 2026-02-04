@@ -18,38 +18,46 @@ def uint16_to_float(data, min_val, max_val):
 def save_as_png_16bit(data, output_path, min_val=-20.0, max_val=20.0):
     if data is None or data.size == 0:
         return
-        
-    # Flatten data to 1D stream of values
-    flat_data = data.flatten()
+    frames, dimension = data.shape
+    print(f'{data.shape} {frames} {dimension}')
     
-    # Pad to multiple of 4 (RGBA)
-    remainder = len(flat_data) % 4
-    if remainder != 0:
-        padding = 4 - remainder
-        flat_data = np.pad(flat_data, (0, padding), mode='constant', constant_values=0)
+    # Pad dimension to multiple of 4 (RGBA)
+    padded_dim = (dimension + 3) // 4 * 4
+    dim_pad = padded_dim - dimension
+    if dim_pad > 0:
+        data = np.pad(data, ((0, 0), (0, dim_pad)), mode='constant')
         
-    # Group into pixels (N, 4)
-    pixels = flat_data.reshape(-1, 4)
+    # Frames will be columns, Dimension will be rows (4 vals per pixel)
+    rows_per_frame = padded_dim // 4
     
-    # Calculate image dimensions
-    total_pixels = len(pixels)
+    # Reshape data to (frames, rows_per_frame, 4)
+    data_reshaped = data.reshape(frames, rows_per_frame, 4)
+    
     max_width = 1024
     
-    if total_pixels <= max_width:
-        width = total_pixels
-        height = 1
+    if frames <= max_width:
+        # Layout: Width=frames, Height=rows_per_frame
+        # Transpose (frames, rows, 4) -> (rows, frames, 4)
+        # Image Height = rows_per_frame, Image Width = frames
+        img_data_float = data_reshaped.transpose(1, 0, 2)
     else:
-        width = max_width
-        height = (total_pixels + max_width - 1) // max_width
+        # Layout: Width=max_width, Height= Multiple blocks of rows_per_frame
+        # Pad frames to multiple of max_width
+        frame_pad = (max_width - (frames % max_width)) % max_width
+        if frame_pad > 0:
+            data_reshaped = np.pad(data_reshaped, ((0, frame_pad), (0, 0), (0, 0)), mode='constant')
+            
+        total_frames = data_reshaped.shape[0]
+        num_blocks = total_frames // max_width
         
-    # Pad pixels to fill the image rectangle
-    total_slots = width * height
-    if total_slots > total_pixels:
-        pixel_pad = total_slots - total_pixels
-        pixels = np.pad(pixels, ((0, pixel_pad), (0, 0)), mode='constant', constant_values=0)
+        # Reshape to (num_blocks, max_width, rows, 4)
+        blocks = data_reshaped.reshape(num_blocks, max_width, rows_per_frame, 4)
         
-    # Reshape to (H, W, 4)
-    img_data_float = pixels.reshape(height, width, 4)
+        # Transpose to (num_blocks, rows, max_width, 4) to stack vertically
+        blocks = blocks.transpose(0, 2, 1, 3)
+        
+        # Combine blocks: flatten first two dims
+        img_data_float = blocks.reshape(num_blocks * rows_per_frame, max_width, 4)
     
     # Convert to uint16
     img_data_uint16 = float_to_uint16(img_data_float, min_val, max_val)
@@ -70,7 +78,7 @@ def save_as_png_16bit(data, output_path, min_val=-20.0, max_val=20.0):
     if not success:
         print(f"Failed to write image to {output_path}")
 
-def load_from_png_16bit(file_path, min_val, max_val):
+def load_from_png_16bit(file_path, min_val, max_val, stride=None):
     import cv2
     img = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
     if img is None:
@@ -94,8 +102,32 @@ def load_from_png_16bit(file_path, min_val, max_val):
         # Treat as 1 channel stream?
         img = img.reshape(img.shape[0], img.shape[1], 1)
         
-    # Flatten to get the stream of values
-    flat_data = img.flatten()
+    if stride is None:
+        flat_data = img.flatten()
+    else:
+        H, W = img.shape[:2]
+        C = img.shape[2] if len(img.shape) > 2 else 1
+        rows_per_frame = (stride + 3) // 4
+        num_blocks = H // rows_per_frame
+        
+        # Reshape to (Blocks, Rows, Width, C)
+        # Handle cases where image height might not be perfect multiple if cropped somehow (robustness)
+        valid_H = num_blocks * rows_per_frame
+        img = img[:valid_H, :, :]
+        
+        blocks = img.reshape(num_blocks, rows_per_frame, W, C)
+        
+        # Transpose to (Blocks, Width, Rows, C) -> (TotalFrames, Rows, C)
+        blocks = blocks.transpose(0, 2, 1, 3)
+        
+        # Flatten frames content to 1D stream per frame (TotalFrames, Rows*C)
+        frames_data = blocks.reshape(-1, rows_per_frame * C)
+        
+        # Trim padding in dimension
+        if frames_data.shape[1] > stride:
+            frames_data = frames_data[:, :stride]
+            
+        flat_data = frames_data.flatten()
     
     return uint16_to_float(flat_data, min_val, max_val)
 
@@ -133,10 +165,7 @@ def load_motion_dict(input_path, mode='character'):
     if ext == '.npy':
         data = np.load(input_path)
     elif ext == '.png':
-        scale = 1.0 #50.0 if mode == 'camera' else 20.0
-        flat_data = load_from_png_16bit(input_path, -scale, scale)
-        
-        # We need to reshape the flat data back into frames
+        # Determine stride first to decode PNG layout
         if mode == 'camera':
             stride = 8 # Pos(3) + FOV(1) + Rot(4)
         else:
@@ -145,6 +174,9 @@ def load_motion_dict(input_path, mode='character'):
             # Stride = Center(3) + Scale(1) + Bones(N)*4
             stride = 4 + len(bones) * 4
             
+        scale = 1.0 #50.0 if mode == 'camera' else 20.0
+        flat_data = load_from_png_16bit(input_path, -scale, scale, stride=stride)
+        
         # Calculate number of frames
         # Use integer division, ignore trailing padding zeros if any
         num_frames = len(flat_data) // stride
