@@ -256,5 +256,5 @@ def load_motion_dict(input_path, mode='character'):
 def convert_motion_to_vmd(input_path, output_vmd_path, mode='character'):
     anim = load_motion_dict(input_path, mode)
     if not anim:
-        return False
-    return write_vmd(output_vmd_path, anim)
+        return False, anim
+    return write_vmd(output_vmd_path, anim), anim

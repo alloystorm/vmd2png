@@ -19,7 +19,7 @@ def test_pipeline():
     # 1. Create Dummy Animation
     print("1. Creating dummy VMD data...")
     bone_frames = []
-    for i in range(10):
+    for i in range(2000):
         frame = {
             "name": "Center",
             "frame_num": i,
@@ -30,7 +30,7 @@ def test_pipeline():
         bone_frames.append(frame)
         
     camera_frames = []
-    for i in range(10):
+    for i in range(2000):
         frame = {
             "frame_num": i,
             "dist": 10.0,
@@ -57,8 +57,8 @@ def test_pipeline():
     print("2. Parsing VMD...")
     success, parsed_anim = parse_vmd(vmd_path)
     assert success, "Failed to parse VMD"
-    assert len(parsed_anim["bone_frames"]) == 10
-    assert len(parsed_anim["camera_frames"]) == 10
+    assert len(parsed_anim["bone_frames"]) == 2000
+    assert len(parsed_anim["camera_frames"]) == 2000
     print("   VMD parsed successfully.")
     
     # 3. Export to Files
@@ -78,11 +78,15 @@ def test_pipeline():
     back_vmd_char = os.path.join(output_dir, "back_char.vmd")
     back_vmd_cam = os.path.join(output_dir, "back_cam.vmd")
     
-    success = convert_motion_to_vmd(exp_char_png, back_vmd_char, mode='character')
+    success, parsed_anim = convert_motion_to_vmd(exp_char_png, back_vmd_char, mode='character')
     assert success, "Failed to convert character PNG to VMD"
+    print(f'length: {len(parsed_anim["bone_frames"])}')
+    # assert len(parsed_anim["bone_frames"]) == 2000
     
-    success = convert_motion_to_vmd(exp_cam_png, back_vmd_cam, mode='camera')
+    success, parsed_anim = convert_motion_to_vmd(exp_cam_png, back_vmd_cam, mode='camera')
     assert success, "Failed to convert camera PNG to VMD"
+    print(f'length: {len(parsed_anim["camera_frames"])}')
+    # assert len(parsed_anim["camera_frames"]) == 2000
     print("   Conversion successful.")
     
     # 5. Verify Content of converted VMD
