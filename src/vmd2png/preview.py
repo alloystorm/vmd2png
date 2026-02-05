@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from matplotlib.widgets import Slider
+from matplotlib.widgets import Slider, Button
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from .converter import load_motion_dict
@@ -53,6 +53,12 @@ def preview_motion(input_path, mode='character', fps=30):
     plt.subplots_adjust(bottom=0.25) # Make room for the slider
     
     center = root.find("Center")
+
+    # Animation state
+    anim_state = {
+        'frame': 0,
+        'running': True
+    }
 
     def update_plot(frame):
         ax.clear()
@@ -117,19 +123,47 @@ def preview_motion(input_path, mode='character', fps=30):
         ax.set_zlabel('Y (Up)')
 
     def update(frame):
-        slider.set_val(frame) # Sync slider
-        return update_plot(frame)
+        if not anim_state['running']:
+            return
+            
+        current_frame = anim_state['frame']
+        if current_frame >= total_frames - 1:
+            current_frame = 0
+        else:
+            current_frame += 1
+            
+        anim_state['frame'] = current_frame
+        
+        # Determine if we need to update slider visually without triggering callback loop
+        if slider.val != current_frame:
+            slider.eventson = False
+            slider.set_val(current_frame)
+            slider.eventson = True
+            
+        return update_plot(current_frame)
 
     # Slider setup
     ax_slider = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor='lightgoldenrodyellow')
     slider = Slider(ax_slider, 'Frame', 0, total_frames - 1, valinit=0, valfmt='%0.0f')
     
     def on_slider_change(val):
-        update_plot(int(val))
+        anim_state['frame'] = int(val)
+        update_plot(anim_state['frame'])
         
     slider.on_changed(on_slider_change)
 
-    ani = animation.FuncAnimation(fig, update, frames=range(0, total_frames, 1), interval=1000/fps)
+    # Play/Pause Button
+    ax_play = plt.axes([0.1, 0.1, 0.1, 0.04])
+    btn_play = Button(ax_play, 'Pause', color='lightgoldenrodyellow', hovercolor='0.975')
+
+    def toggle_play(event):
+        anim_state['running'] = not anim_state['running']
+        btn_play.label.set_text('Pause' if anim_state['running'] else 'Play')
+        
+    btn_play.on_clicked(toggle_play)
+
+    # Use a generator or infinite loop for frames so we control flow manually
+    ani = animation.FuncAnimation(fig, update, frames=None, interval=1000/fps, cache_frame_data=False)
     plt.show()
 
 if __name__ == "__main__":
