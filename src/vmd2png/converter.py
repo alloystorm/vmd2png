@@ -195,10 +195,12 @@ def load_motion_dict(input_path, mode='character'):
     if mode == 'camera':
         for i in range(len(data)):
             row = data[i]
-            pos = row[0:3] * 32768 / 1000
-            fov = row[3] * 6
+            pos = (row[0:3] - 1.0) * 32768 / 1000
+            fov = row[3] * 180
             rot = row[4:8]
-            
+            #print(f'{i}/{len(data)} {pos} {fov}')
+            if fov < 0.01:
+                break
             frame = {
                 "frame_num": i,
                 "position": pos,
