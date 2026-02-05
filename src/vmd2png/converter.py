@@ -15,7 +15,7 @@ def uint16_to_float(data, min_val, max_val):
     norm = data.astype(np.float32) / 65535.0
     return norm * (max_val - min_val) + min_val
 
-def save_as_png_16bit(data, output_path, min_val=-20.0, max_val=20.0):
+def save_as_png_16bit(data, output_path, min_val=-1, max_val=1):
     if data is None or data.size == 0:
         return
     frames, dimension = data.shape
@@ -33,7 +33,7 @@ def save_as_png_16bit(data, output_path, min_val=-20.0, max_val=20.0):
     # Reshape data to (frames, rows_per_frame, 4)
     data_reshaped = data.reshape(frames, rows_per_frame, 4)
     
-    max_width = 1024
+    max_width = int(dimension ** 0.5) * 64
     
     if frames <= max_width:
         # Layout: Width=frames, Height=rows_per_frame
@@ -195,7 +195,7 @@ def load_motion_dict(input_path, mode='character'):
     if mode == 'camera':
         for i in range(len(data)):
             row = data[i]
-            pos = (row[0:3] - 1.0) * 32768 / 1000
+            pos = row[0:3] * 32768 / 1000
             fov = row[3] * 180
             rot = row[4:8]
             #print(f'{i}/{len(data)} {pos} {fov}')
@@ -219,6 +219,9 @@ def load_motion_dict(input_path, mode='character'):
         bone_frames = []
         for i in range(len(data)):
             row = data[i]
+            #print(f'{i}/{len(data)} {row[:4]}')
+            if row[3] < 0.01:
+                break
             curr = 4
             for bone in bones:
                 if curr + 4 <= len(row):

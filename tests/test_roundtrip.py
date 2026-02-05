@@ -81,12 +81,12 @@ def test_pipeline():
     success, parsed_anim = convert_motion_to_vmd(exp_char_png, back_vmd_char, mode='character')
     assert success, "Failed to convert character PNG to VMD"
     print(f'length: {len(parsed_anim["bone_frames"])}')
-    # assert len(parsed_anim["bone_frames"]) == 2000
+    assert len(parsed_anim["bone_frames"]) / 71 == 2000
     
     success, parsed_anim = convert_motion_to_vmd(exp_cam_png, back_vmd_cam, mode='camera')
     assert success, "Failed to convert camera PNG to VMD"
     print(f'length: {len(parsed_anim["camera_frames"])}')
-    # assert len(parsed_anim["camera_frames"]) == 2000
+    assert len(parsed_anim["camera_frames"]) == 2000
     print("   Conversion successful.")
     
     # 5. Verify Content of converted VMD
