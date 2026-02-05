@@ -75,16 +75,16 @@ def preview_motion(input_path, mode='character', fps=30):
         # The user requested +/- 2 relative to center. 
         # But global[1] is vertical (Y), global[2] is depth (Z).
         
-        ax.set_xlim(cx - 10, cx + 10)
-        ax.set_ylim(cz - 10, cz + 10) # Depth
-        ax.set_zlim(0, 25) # Height usually starts from ground
+        ax.set_xlim(cx - 2, cx + 2)
+        ax.set_ylim(cz - 2, cz + 2) # Depth
+        ax.set_zlim(0, 4) # Height usually starts from ground
         
         # User requested: "plot range from global position of center bone +/- 2"
         # Since this is a very tight zoom, let's apply it strictly as requested for X/Z (horizontal plane)
         # and keep Y (vertical) reasonable or centered too.
         
         # Applying tight focus on center bone
-        ax.set_xlim(cx - 10, cx + 10) # Keeping wide X for visibility, or user wants tight?
+        ax.set_xlim(cx - 2, cx + 2) # Keeping wide X for visibility, or user wants tight?
         # Re-reading: "update the plot range from global position of center bone +/- 2" implies tight follow.
         
         range_val = 15 # Keep it viewable. +/- 2 might be too small for a full skeleton.
@@ -93,9 +93,9 @@ def preview_motion(input_path, mode='character', fps=30):
                        # but keep the viewport size meaningful.
         
         # Actually, let's try to center the camera on the bone but keep the field of view constant.
-        ax.set_xlim(cx - 10, cx + 10)
-        ax.set_ylim(cz - 10, cz + 10)
-        ax.set_zlim(0, 25)
+        ax.set_xlim(cx - 2, cx + 2)
+        ax.set_ylim(cz - 2, cz + 2)
+        ax.set_zlim(0, 4)
         
         # If the user literally wants the axis limits to be [cx-2, cx+2], that's a 4 unit window.
         # Most MMD models are ~15-20 units tall. A 4 unit window will only show the hips.
@@ -106,8 +106,8 @@ def preview_motion(input_path, mode='character', fps=30):
         
         # Implementation of centering logic:
         # Shift limits so center is in the middle
-        ax.set_xlim(cx - 10, cx + 10)
-        ax.set_ylim(cz - 10, cz + 10)
+        ax.set_xlim(cx - 2, cx + 2)
+        ax.set_ylim(cz - 2, cz + 2)
         
         # Plot
         plot_skeleton_3d(root, ax)
