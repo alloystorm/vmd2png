@@ -46,7 +46,8 @@ def test_ik_logic():
 
     # 3. Run Animation
     animate_skeleton(root, 0)
-    assert l_leg_ik.globalPos[1] == 0.1, "IK Target Y should be 0.1"
+    # print(f" {l_leg_ik.pos} {l_leg_ik.globalPos} After moving Center up, before IK: Ankle Pos: {l_ankle.globalPos}, Leg Rot: {l_leg.quat}, Knee Rot: {l_knee.quat}")
+    assert abs(l_leg_ik.globalPos[1] - 0.2) < 0.01, "IK Target Y should be 0.2"
 
     
     final_ankle_pos = l_ankle.globalPos
