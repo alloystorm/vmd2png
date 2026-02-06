@@ -39,6 +39,7 @@ class Bone:
         self.globalPos = np.zeros(3, dtype=float)
         self.globalQuat = np.array([0.0, 0.0, 0.0, 1.0])  # Global rotation as quaternion
         self.parent = None
+        self.translatable = name in ("Master", "センター", "Center", "LeftLegIK", "RightLegIK", "RightLegIKParent", "LeftLegIKParent")
 
     def set_parent(self, parent):
         self.parent = parent
@@ -135,7 +136,7 @@ class Bone:
         if frame_num == prev_frame["frame_num"] or next_frame is None:
             # Direct use, no interpolation needed
             self.set_quat(prev_frame["rotation"])
-            if self.name in ("Master", "センター", "Center", "LeftLegIK", "RightLegIK", "RightLegIKParent", "LeftLegIKParent"):
+            if self.translatable:
                 self.pos = np.array(prev_frame["position"])
         else:
             t = (frame_num - prev_frame["frame_num"]) / (next_frame["frame_num"] - prev_frame["frame_num"])
@@ -146,7 +147,7 @@ class Bone:
             self.set_quat(rot_lerp(prev_quat, next_quat, t))
             
             # Interpolate position for center bones
-            if self.name in ("Master", "センター", "Center", "LeftLegIK", "RightLegIK", "RightLegIKParent", "LeftLegIKParent"):
+            if self.translatable:
                 prev_pos = np.array(prev_frame["position"])
                 next_pos = np.array(next_frame["position"])
                 self.pos = prev_pos + t * (next_pos - prev_pos)
