@@ -4,85 +4,12 @@ from scipy.spatial.transform import Rotation as R
 def solve_two_bone_ik(start_pos, end_pos, upper_length, lower_length, knee_hint_pos=None):
     """
     Solve two-bone inverse kinematics (like for a leg: hip-knee-ankle).
-    
-    Args:
-        start_pos: Position of the first joint (hip)
-        end_pos: Target position for the end effector (ankle)
-        upper_length: Length of the upper bone (thigh)
-        lower_length: Length of the lower bone (shin)
-        knee_hint_pos: Optional hint for knee position to determine bend direction
-        
-    Returns:
-        Tuple of (hip_rotation_quat, knee_rotation_quat) or (None, None) if impossible
+    Returns global rotations assuming default bone direction is (0,0,-1).
+    kept for backward compatibility with initial implementation logic, 
+    but likely you want to use solve_ik_geometry and calculate rotations yourself.
     """
-    # Vector from start to end
-    target_vector = end_pos - start_pos
-    target_distance = np.linalg.norm(target_vector)
+    knee_pos = solve_ik_geometry(start_pos, end_pos, upper_length, lower_length, knee_hint_pos)
     
-    # Handle zero distance case
-    if target_distance < 1e-6:
-        # Target is at start position - return identity rotations
-        return np.array([0.0, 0.0, 0.0, 1.0]), np.array([0.0, 0.0, 0.0, 1.0])
-    
-    # Check if target is reachable
-    max_reach = upper_length + lower_length
-    min_reach = abs(upper_length - lower_length)
-    
-    if target_distance > max_reach:
-        # Target is unreachable, clamp to max reach
-        target_distance = max_reach * 0.99  # Slightly less than max to avoid singularity
-        target_vector = (target_vector / np.linalg.norm(target_vector)) * target_distance
-    elif target_distance < min_reach:
-        # Target is too close, clamp to min reach
-        target_distance = min_reach * 1.01  # Slightly more than min
-        target_vector = (target_vector / np.linalg.norm(target_vector)) * target_distance
-    
-    # Use law of cosines to find angles
-    # Angle at hip (between upper bone and target vector)
-    cos_hip_angle = (upper_length**2 + target_distance**2 - lower_length**2) / (2 * upper_length * target_distance)
-    cos_hip_angle = np.clip(cos_hip_angle, -1.0, 1.0)  # Clamp to valid range
-    hip_angle = np.arccos(cos_hip_angle)
-    
-    # Angle at knee (internal angle of the knee joint)
-    cos_knee_angle = (upper_length**2 + lower_length**2 - target_distance**2) / (2 * upper_length * lower_length)
-    cos_knee_angle = np.clip(cos_knee_angle, -1.0, 1.0)  # Clamp to valid range
-    knee_angle = np.arccos(cos_knee_angle)
-    
-    # Normalize target direction
-    target_dir = target_vector / np.linalg.norm(target_vector)
-    
-    # Calculate the actual knee position using the triangle geometry
-    # The knee forms a triangle with hip and target
-    # We need to find the knee position that satisfies the bone lengths
-    
-    # First, get the direction from hip to target
-    hip_to_target_dir = target_dir
-    
-    # Calculate the knee position
-    # Distance from hip to knee projection on the hip-target line
-    hip_to_knee_proj = upper_length * np.cos(hip_angle)
-    
-    # Height of knee above the hip-target line
-    knee_height = upper_length * np.sin(hip_angle)
-    
-    # Determine knee bend direction
-    if knee_hint_pos is not None:
-        # Use hint to determine bend direction
-        hint_vector = knee_hint_pos - start_pos
-        # Project hint onto plane perpendicular to target direction
-        hint_proj = hint_vector - np.dot(hint_vector, target_dir) * target_dir
-        if np.linalg.norm(hint_proj) > 1e-6:
-            bend_dir = hint_proj / np.linalg.norm(hint_proj)
-        else:
-            # Fallback bend direction
-            bend_dir = get_default_bend_direction(target_dir)
-    else:
-        bend_dir = get_default_bend_direction(target_dir)
-    
-    # Calculate knee position
-    knee_pos = start_pos + hip_to_target_dir * hip_to_knee_proj + bend_dir * knee_height
-    
-    # Now calculate the rotations
     # Hip rotation: rotate from initial direction to actual upper bone direction
     initial_bone_dir = np.array([0, 0, -1])  # Assume bones point down initially
     actual_upper_bone_dir = (knee_pos - start_pos) / upper_length
@@ -93,6 +20,54 @@ def solve_two_bone_ik(start_pos, end_pos, upper_length, lower_length, knee_hint_
     knee_rotation = calculate_rotation_between_vectors(actual_upper_bone_dir, actual_lower_bone_dir)
     
     return hip_rotation.as_quat(), knee_rotation.as_quat()
+
+def solve_ik_geometry(start_pos, end_pos, upper_length, lower_length, knee_hint_pos=None):
+    """
+    Calculate the joint position (knee) for a two-bone IK chain.
+    """
+    # Vector from start to end
+    target_vector = end_pos - start_pos
+    target_distance = np.linalg.norm(target_vector)
+    
+    # Handle zero distance case
+    if target_distance < 1e-6:
+        return start_pos + np.array([0, -upper_length, 0]) # Arbitrary default
+    
+    # Check if target is reachable
+    max_reach = upper_length + lower_length
+    min_reach = abs(upper_length - lower_length)
+    
+    if target_distance > max_reach:
+        target_distance = max_reach * 0.999
+        target_vector = (target_vector / np.linalg.norm(target_vector)) * target_distance
+    elif target_distance < min_reach:
+        target_distance = min_reach * 1.001
+        target_vector = (target_vector / np.linalg.norm(target_vector)) * target_distance
+    
+    # Use law of cosines to find angles
+    cos_hip_angle = (upper_length**2 + target_distance**2 - lower_length**2) / (2 * upper_length * target_distance)
+    cos_hip_angle = np.clip(cos_hip_angle, -1.0, 1.0)
+    hip_angle = np.arccos(cos_hip_angle)
+    
+    # Normalize target direction
+    target_dir = target_vector / np.linalg.norm(target_vector)
+    
+    # Calculate the knee position using the triangle geometry
+    hip_to_knee_proj = upper_length * np.cos(hip_angle)
+    knee_height = upper_length * np.sin(hip_angle)
+    
+    # Determine knee bend direction
+    if knee_hint_pos is not None:
+        hint_vector = knee_hint_pos - start_pos
+        hint_proj = hint_vector - np.dot(hint_vector, target_dir) * target_dir
+        if np.linalg.norm(hint_proj) > 1e-6:
+            bend_dir = hint_proj / np.linalg.norm(hint_proj)
+        else:
+            bend_dir = get_default_bend_direction(target_dir)
+    else:
+        bend_dir = get_default_bend_direction(target_dir)
+    
+    return start_pos + target_dir * hip_to_knee_proj + bend_dir * knee_height
 
 def get_default_bend_direction(target_dir):
     """Get default bend direction perpendicular to target direction."""

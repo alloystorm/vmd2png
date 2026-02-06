@@ -425,17 +425,62 @@ def apply_single_leg_ik(root_bone, side, target_pos):
     if not all([hip_bone, knee_bone, ankle_bone]):
         return
     try:
+        from .ik import solve_ik_geometry, calculate_rotation_between_vectors
+        
         hip_pos = hip_bone.globalPos
         knee_pos = knee_bone.globalPos
         ankle_pos = ankle_bone.globalPos
+        
+        # Calculate bone lengths
         upper_leg_length = np.linalg.norm(knee_pos - hip_pos)
         lower_leg_length = np.linalg.norm(ankle_pos - knee_pos)
-        hip_rotation, knee_rotation = solve_two_bone_ik(
+        
+        # Calculate target knee position using geometric IK
+        # Pass current knee_pos as hint to keep bending consistent
+        target_knee_pos_global = solve_ik_geometry(
             hip_pos, target_pos, upper_leg_length, lower_leg_length, knee_pos
         )
-        if hip_rotation is not None and knee_rotation is not None:
-            hip_bone.quat = hip_rotation
-            knee_bone.quat = knee_rotation
-            hip_bone.calc_world_pos(hip_bone.parent.globalPos, hip_bone.parent.globalQuat)
+        
+        # --- Calculate Hip Rotation ---
+        # 1. Determine local bone rest direction
+        v_upper_rest_local = knee_bone.zeroPos - hip_bone.zeroPos
+        norm_upper = np.linalg.norm(v_upper_rest_local)
+        if norm_upper > 1e-6:
+            v_upper_rest_local /= norm_upper
+        else:
+            v_upper_rest_local = np.array([0, -1, 0])
+            
+        # 2. Convert target direction to parent space
+        v_upper_target_global = target_knee_pos_global - hip_pos
+        parent_rot = R.from_quat(hip_bone.parent.globalQuat)
+        v_upper_target_local = parent_rot.inv().apply(v_upper_target_global)
+        
+        # 3. Calculate hip local rotation
+        hip_rotation = calculate_rotation_between_vectors(v_upper_rest_local, v_upper_target_local)
+        hip_bone.quat = hip_rotation.as_quat()
+        
+        # Update hip bone global transform immediately so child (knee) uses correct parent transform
+        hip_bone.calc_world_pos(hip_bone.parent.globalPos, hip_bone.parent.globalQuat)
+        
+        # --- Calculate Knee Rotation ---
+        # 1. Determine local bone rest direction
+        v_lower_rest_local = ankle_bone.zeroPos - knee_bone.zeroPos
+        norm_lower = np.linalg.norm(v_lower_rest_local)
+        if norm_lower > 1e-6:
+            v_lower_rest_local /= norm_lower
+        else:
+            v_lower_rest_local = np.array([0, -1, 0])
+            
+        # 2. Convert target to parent (Hip Global) space
+        # Note: Knee's parent is Hip
+        v_lower_target_global = target_pos - target_knee_pos_global
+        
+        hip_global_rot = R.from_quat(hip_bone.globalQuat)
+        v_lower_target_local = hip_global_rot.inv().apply(v_lower_target_global)
+        
+        # 3. Calculate knee local rotation
+        knee_rotation = calculate_rotation_between_vectors(v_lower_rest_local, v_lower_target_local)
+        knee_bone.quat = knee_rotation.as_quat()
+        
     except Exception as e:
         print(f"Warning: IK failed for {side.lower()} leg: {e}")
