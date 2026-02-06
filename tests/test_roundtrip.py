@@ -6,10 +6,51 @@ import shutil
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from vmd2png.vmd import write_vmd, parse_vmd
+from vmd2png.vmd import write_vmd, parse_vmd, animate_skeleton
 from vmd2png.converter import export_vmd_to_files, convert_motion_to_vmd, load_motion_dict
+from vmd2png.skeleton import build_standard_skeleton
+
+def test_ik_logic():
+    print("Testing IK Logic...")
+    root, bones = build_standard_skeleton()
+    
+    # Scenario: Move Center Up, Keep IK Target at initial Ankle position.
+    # Center moves up, pulling the Hip up. 
+    # The leg should extend to keep Ankle at Target.
+    
+    center = bones["Center"]
+    l_leg_ik = bones["LeftLegIK"]
+    l_ankle = bones["LeftAnkle"]
+    
+    # Clear frames
+    for b in bones.values():
+        b.frames = []
+        
+    # 1. Determine initial ankle position (Default Pose)
+    center.frames = [{ "frame_num": 0, "position": (0, 0, 0), "rotation": (0,0,0,1), "bezier": b'' }]
+    l_leg_ik.frames = [] # No IK
+    animate_skeleton(root, 0)
+    initial_ankle_pos = l_ankle.globalPos.copy()
+    
+    # 2. Setup Frame 0: Center Moves UP +2.0, IK Target placed at initial ankle pos
+    center.frames = [{ "frame_num": 0, "position": (0, 0.0, 0), "rotation": (0,0,0,1), "bezier": b'' }]
+    l_leg_ik.frames = [{ "frame_num": 0, "position": initial_ankle_pos, "rotation": (0,0,0,1), "bezier": b'' }]
+    
+    # 3. Run Animation
+    animate_skeleton(root, 0)
+    
+    final_ankle_pos = l_ankle.globalPos
+    diff = np.linalg.norm(final_ankle_pos - initial_ankle_pos)
+    
+    print(f"   Target Y: {initial_ankle_pos[1]:.4f}, Result Y: {final_ankle_pos[1]:.4f}, Diff: {diff:.4f}")
+    
+    # If IK failed (stale inputs), ankle would move up with Center (+2.0)
+    # If IK works, it should be close to initial_ankle_pos
+    assert diff < 0.2, f"IK Failed. Ankle moved too far: {diff}"
+    print("   IK Logic test passed.")
 
 def test_pipeline():
+    test_ik_logic()
     print("Testing Pipeline...")
     output_dir = "test_output"
     if os.path.exists(output_dir):

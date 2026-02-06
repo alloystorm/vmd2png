@@ -391,7 +391,15 @@ def update_bone_for_frame(bone, frame_num):
 def animate_skeleton(root_bone, frame_num):
     """Update the skeleton to a specific frame number."""
     update_bone_for_frame(root_bone, frame_num)
+    
+    # Calculate global positions before IK so solver uses current frame's hip/target positions
+    root_pos = np.zeros(3)
+    root_rot = np.identity(3)
+    root_bone.calc_world_pos(root_pos, root_rot)
+
     apply_leg_ik(root_bone)
+    
+    # Recalculate global positions after IK modified leg rotations
     root_pos = np.zeros(3)
     root_rot = np.identity(3)
     root_bone.calc_world_pos(root_pos, root_rot)
