@@ -6,7 +6,7 @@ import shutil
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from vmd2png.vmd import write_vmd, parse_vmd, animate_skeleton
+from vmd2png.vmd import write_vmd, parse_vmd, animate_skeleton, has_ik_movement
 from vmd2png.converter import export_vmd_to_files, convert_motion_to_vmd, load_motion_dict
 from vmd2png.skeleton import build_standard_skeleton
 
@@ -21,6 +21,8 @@ def test_ik_logic():
     center = bones["Center"]
     l_leg_ik = bones["LeftLegIK"]
     l_ankle = bones["LeftAnkle"]
+    l_leg = bones["LeftLeg"]
+    l_knee = bones["LeftKnee"]
     
     # Clear frames
     for b in bones.values():
@@ -29,17 +31,26 @@ def test_ik_logic():
     # 1. Determine initial ankle position (Default Pose)
     center.frames = [{ "frame_num": 0, "position": (0, 0, 0), "rotation": (0,0,0,1), "bezier": b'' }]
     l_leg_ik.frames = [] # No IK
+    assert not has_ik_movement(l_leg_ik)
+
     animate_skeleton(root, 0)
     initial_ankle_pos = l_ankle.globalPos.copy()
+    initial_leg_rot = l_leg.quat.copy()
+    initial_knee_rot = l_knee.quat.copy()
+    print(f"   Initial Ankle Pos: {initial_ankle_pos}, Leg Rot: {initial_leg_rot}, Knee Rot: {initial_knee_rot}")
     
     # 2. Setup Frame 0: Center Moves UP +2.0, IK Target placed at initial ankle pos
-    center.frames = [{ "frame_num": 0, "position": (0, 0.0, 0), "rotation": (0,0,0,1), "bezier": b'' }]
-    l_leg_ik.frames = [{ "frame_num": 0, "position": (0.1, 0.1, 0.1), "rotation": (0,0,0,1), "bezier": b'' }]
-    
+    center.frames = [{ "frame_num": 0, "position": (0, 0.0, 0), "rotation": (0,0,0,1), "bezier": b'' }, { "frame_num": 1, "position": (0, 0.0, 0), "rotation": (0,0,0,1), "bezier": b'' }]
+    l_leg_ik.frames = [{ "frame_num": 0, "position": (0.1, 0.1, 0.1), "rotation": (0,0,0,1), "bezier": b'' }, { "frame_num": 1, "position": (0.1, 0.1, 0.1), "rotation": (0,0,0,1), "bezier": b'' }]
+    assert has_ik_movement(l_leg_ik)
+
     # 3. Run Animation
     animate_skeleton(root, 0)
     
     final_ankle_pos = l_ankle.globalPos
+    final_leg_rot = l_leg.quat
+    final_knee_rot = l_knee.quat
+    print(f"   Final Ankle Pos: {final_ankle_pos}, Leg Rot: {final_leg_rot}, Knee Rot: {final_knee_rot}")
     diff = np.linalg.norm(final_ankle_pos - initial_ankle_pos)
     
     print(f"   Target Y: {initial_ankle_pos[1]:.4f}, Result Y: {final_ankle_pos[1]:.4f}, Diff: {diff:.4f}")
