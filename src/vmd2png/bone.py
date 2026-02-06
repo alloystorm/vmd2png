@@ -135,7 +135,7 @@ class Bone:
         if frame_num == prev_frame["frame_num"] or next_frame is None:
             # Direct use, no interpolation needed
             self.set_quat(prev_frame["rotation"])
-            if self.name in ("Master", "センター", "Center"):
+            if self.name in ("Master", "センター", "Center", "LeftLegIK", "RightLegIK", "RightLegIKParent", "LeftLegIKParent"):
                 self.pos = np.array(prev_frame["position"])
         else:
             t = (frame_num - prev_frame["frame_num"]) / (next_frame["frame_num"] - prev_frame["frame_num"])
