@@ -34,7 +34,7 @@ def test_ik_logic():
     
     # 2. Setup Frame 0: Center Moves UP +2.0, IK Target placed at initial ankle pos
     center.frames = [{ "frame_num": 0, "position": (0, 0.0, 0), "rotation": (0,0,0,1), "bezier": b'' }]
-    l_leg_ik.frames = [{ "frame_num": 0, "position": initial_ankle_pos, "rotation": (0,0,0,1), "bezier": b'' }]
+    l_leg_ik.frames = [{ "frame_num": 0, "position": (0.1, 0.1, 0.1), "rotation": (0,0,0,1), "bezier": b'' }]
     
     # 3. Run Animation
     animate_skeleton(root, 0)
