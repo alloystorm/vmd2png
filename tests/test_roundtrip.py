@@ -37,7 +37,7 @@ def test_ik_logic():
     initial_ankle_pos = l_ankle.globalPos.copy()
     initial_leg_rot = l_leg.quat.copy()
     initial_knee_rot = l_knee.quat.copy()
-    print(f"   Initial Ankle Pos: {initial_ankle_pos}, Leg Rot: {initial_leg_rot}, Knee Rot: {initial_knee_rot}")
+    print(f"   {l_leg_ik.globalPos} Initial Ankle Pos: {initial_ankle_pos}, Leg Rot: {initial_leg_rot}, Knee Rot: {initial_knee_rot}")
     
     # 2. Setup Frame 0: Center Moves UP +2.0, IK Target placed at initial ankle pos
     center.frames = [{ "frame_num": 0, "position": (0, 0.0, 0), "rotation": (0,0,0,1), "bezier": b'' }, { "frame_num": 1, "position": (0, 0.0, 0), "rotation": (0,0,0,1), "bezier": b'' }]
@@ -46,11 +46,13 @@ def test_ik_logic():
 
     # 3. Run Animation
     animate_skeleton(root, 0)
+    assert l_leg_ik.globalPos[1] == 0.1, "IK Target Y should be 0.1"
+
     
     final_ankle_pos = l_ankle.globalPos
     final_leg_rot = l_leg.quat
     final_knee_rot = l_knee.quat
-    print(f"   Final Ankle Pos: {final_ankle_pos}, Leg Rot: {final_leg_rot}, Knee Rot: {final_knee_rot}")
+    print(f"   {l_leg_ik.globalPos} Final Ankle Pos: {final_ankle_pos}, Leg Rot: {final_leg_rot}, Knee Rot: {final_knee_rot}")
     diff = np.linalg.norm(final_ankle_pos - initial_ankle_pos)
     
     print(f"   Target Y: {initial_ankle_pos[1]:.4f}, Result Y: {final_ankle_pos[1]:.4f}, Diff: {diff:.4f}")

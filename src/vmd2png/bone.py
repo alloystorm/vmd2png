@@ -146,7 +146,7 @@ class Bone:
             self.set_quat(rot_lerp(prev_quat, next_quat, t))
             
             # Interpolate position for center bones
-            if self.name in ("Master", "センター", "Center"):
+            if self.name in ("Master", "センター", "Center", "LeftLegIK", "RightLegIK", "RightLegIKParent", "LeftLegIKParent"):
                 prev_pos = np.array(prev_frame["position"])
                 next_pos = np.array(next_frame["position"])
                 self.pos = prev_pos + t * (next_pos - prev_pos)
