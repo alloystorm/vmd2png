@@ -304,7 +304,7 @@ def write_vmd(file_path, animation_dict, model_name="MotionOutput"):
         print(f"Error writing VMD: {e}")
         return False
 
-def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=True, leg_ik=True):
+def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=True, leg_ik=False):
     """
     Process VMD and return separated character and camera data.
     """

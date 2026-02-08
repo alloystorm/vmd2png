@@ -131,7 +131,7 @@ def load_from_png_16bit(file_path, min_val, max_val, stride=None):
     
     return uint16_to_float(flat_data, min_val, max_val)
 
-def export_vmd_to_files(vmd_path, output_dir, leg_ik=True):
+def export_vmd_to_files(vmd_path, output_dir, leg_ik=False):
     results = vmd_to_motion_data(vmd_path, verbose=False, leg_ik=leg_ik)
     if not results:
         print(f"Failed to extract info from {vmd_path}")
@@ -152,7 +152,7 @@ def export_vmd_to_files(vmd_path, output_dir, leg_ik=True):
         
     return True
 
-def load_motion_dict(input_path, mode='character', leg_ik=True):
+def load_motion_dict(input_path, mode='character', leg_ik=False):
     ext = os.path.splitext(input_path)[1].lower()
     if ext == '.vmd':
         # success, anim = vmd_to_motion_data(input_path, verbose=False) # Wait, vmd_to_motion_data returns data arrays, not anim dict.
