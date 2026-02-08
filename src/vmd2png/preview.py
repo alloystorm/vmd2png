@@ -144,7 +144,7 @@ def preview_motion(input_path, mode='character', fps=30, leg_ik=False):
 
     # Slider setup
     ax_slider = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    slider = Slider(ax_slider, 'Frame', 0, total_frames - 1, valinit=0, valfmt='%0.0f')
+    slider = Slider(ax_slider, '', 0, total_frames - 1, valinit=0, valfmt='%0.0f')
     
     def on_slider_change(val):
         anim_state['frame'] = int(val)
