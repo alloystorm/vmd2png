@@ -304,7 +304,7 @@ def write_vmd(file_path, animation_dict, model_name="MotionOutput"):
         print(f"Error writing VMD: {e}")
         return False
 
-def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=True):
+def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=True, leg_ik=True):
     """
     Process VMD and return separated character and camera data.
     """
@@ -330,7 +330,7 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
     if verbose: print(f"Processing {totalFrames} frames...")
 
     for frame in range(totalFrames):
-        animate_skeleton(root, frame)
+        animate_skeleton(root, frame, leg_ik)
         center.update_world_pos()
 
         # Character
@@ -388,7 +388,7 @@ def load_vmd_to_skeleton(animation, skeleton_bones):
 def update_bone_for_frame(bone, frame_num):
     bone.update_for_frame(frame_num)
 
-def animate_skeleton(root_bone, frame_num):
+def animate_skeleton(root_bone, frame_num, leg_ik):
     """Update the skeleton to a specific frame number."""
     update_bone_for_frame(root_bone, frame_num)
     
@@ -397,20 +397,20 @@ def animate_skeleton(root_bone, frame_num):
     root_rot = np.identity(3)
     root_bone.calc_world_pos(root_pos, root_rot)
 
-    apply_leg_ik(root_bone)
-    
-    # Recalculate global positions after IK modified leg rotations
-    root_pos = np.zeros(3)
-    root_rot = np.identity(3)
-    root_bone.calc_world_pos(root_pos, root_rot)
+    if leg_ik:
+        apply_leg_ik(root_bone)        
+        # Recalculate global positions after IK modified leg rotations
+        root_pos = np.zeros(3)
+        root_rot = np.identity(3)
+        root_bone.calc_world_pos(root_pos, root_rot)
 
 def apply_leg_ik(root_bone):
     from .ik import solve_two_bone_ik
     left_leg_ik = root_bone.find("LeftLegIK")
     right_leg_ik = root_bone.find("RightLegIK")
-    if left_leg_ik and has_ik_movement(left_leg_ik):
+    if left_leg_ik:
         apply_single_leg_ik(root_bone, "Left", left_leg_ik.globalPos)
-    if right_leg_ik and has_ik_movement(right_leg_ik):
+    if right_leg_ik:
         apply_single_leg_ik(root_bone, "Right", right_leg_ik.globalPos)
 
 def has_ik_movement(ik_bone):

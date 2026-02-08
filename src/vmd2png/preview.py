@@ -26,11 +26,11 @@ def plot_skeleton_3d(root, ax):
     # Draw logic
     collect_bones(root, None)
 
-def preview_motion(input_path, mode='character', fps=30):
+def preview_motion(input_path, mode='character', fps=30, leg_ik=True):
     """
     Preview motion from VMD, NPY, or PNG file.
     """
-    anim = load_motion_dict(input_path, mode)
+    anim = load_motion_dict(input_path, mode, leg_ik)
     if not anim:
         print("Failed to load animation.")
         return
@@ -60,11 +60,11 @@ def preview_motion(input_path, mode='character', fps=30):
         'running': True
     }
 
-    def update_plot(frame):
+    def update_plot(frame, leg_ik):
         ax.clear()
         
         # Animate
-        animate_skeleton(root, frame)
+        animate_skeleton(root, frame, leg_ik)
         center.update_world_pos() # Ensure global positions are updated
         
         # Dynamic axis limits based on Center bone
@@ -140,7 +140,7 @@ def preview_motion(input_path, mode='character', fps=30):
             slider.set_val(current_frame)
             slider.eventson = True
             
-        return update_plot(current_frame)
+        return update_plot(current_frame, leg_ik)
 
     # Slider setup
     ax_slider = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor='lightgoldenrodyellow')
@@ -148,7 +148,7 @@ def preview_motion(input_path, mode='character', fps=30):
     
     def on_slider_change(val):
         anim_state['frame'] = int(val)
-        update_plot(anim_state['frame'])
+        update_plot(anim_state['frame'], leg_ik)
         
     slider.on_changed(on_slider_change)
 

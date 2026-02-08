@@ -33,7 +33,7 @@ def test_ik_logic():
     l_leg_ik.frames = [] # No IK
     assert not has_ik_movement(l_leg_ik)
 
-    animate_skeleton(root, 0)
+    animate_skeleton(root, 0, False)
     initial_ankle_pos = l_ankle.globalPos.copy()
     initial_leg_rot = l_leg.quat.copy()
     initial_knee_rot = l_knee.quat.copy()
@@ -45,7 +45,7 @@ def test_ik_logic():
     assert has_ik_movement(l_leg_ik)
 
     # 3. Run Animation
-    animate_skeleton(root, 0)
+    animate_skeleton(root, 0, True)
     # print(f" {l_leg_ik.pos} {l_leg_ik.globalPos} After moving Center up, before IK: Ankle Pos: {l_ankle.globalPos}, Leg Rot: {l_leg.quat}, Knee Rot: {l_knee.quat}")
     assert abs(l_leg_ik.globalPos[1] - 0.2) < 0.01, "IK Target Y should be 0.2"
 

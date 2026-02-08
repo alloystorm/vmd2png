@@ -13,6 +13,7 @@ def main():
     parser_preview.add_argument("path", help="Path to motion file")
     parser_preview.add_argument("--mode", choices=['character', 'camera'], default='character', help="Preview mode")
     parser_preview.add_argument("--fps", type=int, default=30, help="Playback FPS")
+    parser_preview.add_argument("--ik", action="store_true", help="Use leg IK")
     
     # Convert Command
     parser_convert = subparsers.add_parser("convert", help="Convert between VMD and PNG/NPY")
@@ -47,7 +48,7 @@ def main():
             # Ideally export_vmd_to_files should allow filtering NPY/PNG?
             # Currently it exports both.
             # We'll just run it.
-            success = export_vmd_to_files(args.input, output_dir)
+            success = export_vmd_to_files(args.input, output_dir, leg_ik=args.ik)
             if success:
                 print("Done.")
             else:

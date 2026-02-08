@@ -9,5 +9,6 @@ from vmd2png.vmd import write_vmd, parse_vmd
 from vmd2png.converter import export_vmd_to_files, convert_motion_to_vmd, load_motion_dict
 from vmd2png.preview import preview_motion
 
-export_vmd_to_files("data/conqueror.vmd", "test_output/conqueror")
-preview_motion("test_output/conqueror/conqueror_character.png")
+#export_vmd_to_files("data/conqueror.vmd", "test_output/conqueror", leg_ik=False)
+#preview_motion("test_output/conqueror/conqueror_character.png")
+preview_motion("data/conqueror.vmd", leg_ik=False)
