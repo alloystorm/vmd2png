@@ -75,7 +75,7 @@ skeleton_def = """
 															[RightThumb2] (-0.55, 1.11, 0.02)
 	LeftLegIKParent (0.08, 0.10, 0.06)
 		LeftLegIK (0.08, 0.10, 0.06)
-    RightLegIKParent (-0.08, 0.10, 0.06)
+	RightLegIKParent (-0.08, 0.10, 0.06)
 		RightLegIK (-0.08, 0.10, 0.06)
 """
 
@@ -127,6 +127,7 @@ def build_standard_skeleton():
             parent_stack[indent] = bone
 
     root = bones_dict["Master"]
+    # root.print_info()
     return root, bones_dict
 
 def verify_global_positions(root_bone):

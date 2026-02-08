@@ -85,6 +85,11 @@ class Bone:
         for child in self.children:
             header += child.export_header()
         return header
+    
+    def print_info(self, indent=0):
+        print(f"{self.name} {self.pos}")
+        for child in self.children:
+            child.print_info(indent + 1)
 
     # def record_last_frame(self):
     #     self.last_pos = self.globalPos
