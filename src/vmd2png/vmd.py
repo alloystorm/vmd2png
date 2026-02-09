@@ -72,6 +72,70 @@ bone_name_translation = {
 # Reverse translation (English to Japanese) for writing VMD
 bone_name_reverse_translation = {v: k for k, v in bone_name_translation.items()}
 
+class Camera:
+    def __init__(self, frames):
+        self.frames = sorted(frames, key=lambda x: x["frame_num"]) if frames else []
+        self.global_pos = np.zeros(3)
+        self.global_rot = np.array([0., 0., 0., 1.])
+        self.current_fov = 30.0
+
+    def update(self, frame_num):
+        if not self.frames:
+            return
+
+        # Binary search for frames
+        frames = self.frames
+        low, high = 0, len(frames) - 1
+        prev_idx = 0
+        
+        while low <= high:
+            mid = (low + high) // 2
+            if frames[mid]["frame_num"] <= frame_num:
+                prev_idx = mid
+                low = mid + 1
+            else:
+                high = mid - 1
+        
+        prev_frame = frames[prev_idx]
+        next_idx = prev_idx + 1
+        next_frame = frames[next_idx] if next_idx < len(frames) else None
+        
+        # Interpolation factors
+        if frame_num == prev_frame["frame_num"] or next_frame is None:
+            t = 0.0
+            next_frame = prev_frame 
+        else:
+            t = (frame_num - prev_frame["frame_num"]) / (next_frame["frame_num"] - prev_frame["frame_num"])
+
+        # Interpolate Target Position
+        p1 = np.array(prev_frame["position"])
+        p2 = np.array(next_frame["position"])
+        pos = p1 + t * (p2 - p1)
+        
+        # Interpolate Rotation
+        r1 = np.array(prev_frame["rotation"])
+        r2 = np.array(next_frame["rotation"])
+        rot = rot_lerp(r1, r2, t)
+        
+        # Interpolate Distance
+        d1 = prev_frame["dist"]
+        d2 = next_frame["dist"]
+        dist = d1 + t * (d2 - d1)
+        
+        # Interpolate FOV
+        f1 = prev_frame["fov"]
+        f2 = next_frame["fov"]
+        fov = f1 + t * (f2 - f1)
+        
+        # Calculate Global Cam Params
+        r = R.from_quat(rot)
+        # VMD Logic: CameraPos = Target + Rot * (0, 0, dist)
+        offset = r.apply(np.array([0, 0, dist]))
+        
+        self.global_pos = pos + offset
+        self.global_rot = rot
+        self.current_fov = fov
+
 def parse_vmd(file_path, unit=0.085, fps=30.0):
     """
     Parse a VMD file and return an animation dictionary.
@@ -335,6 +399,7 @@ def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mo
     
     # Sort camera frames once
     camera_frames.sort(key=lambda x: x["frame_num"])
+    camera = Camera(camera_frames)
     has_camera = len(camera_frames) > 0
     
     if verbose: print(f"Processing {totalFrames} frames...")
@@ -354,59 +419,13 @@ def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mo
         
         # Camera
         if has_camera:
-            # Binary search for keyframes
-            low, high = 0, len(camera_frames) - 1
-            prev_idx = 0
+            camera.update(frame)
             
-            while low <= high:
-                mid = (low + high) // 2
-                if camera_frames[mid]["frame_num"] <= frame:
-                    prev_idx = mid
-                    low = mid + 1
-                else:
-                    high = mid - 1
-            
-            prev_cf = camera_frames[prev_idx]
-            next_idx = prev_idx + 1
-            next_cf = camera_frames[next_idx] if next_idx < len(camera_frames) else None
-
-            # Values to interpolate
-            p0 = np.array(prev_cf["position"])
-            r0 = np.array(prev_cf["rotation"]) # xyzw
-            d0 = prev_cf["dist"]
-            f0 = prev_cf["fov"]
-
-            if frame == prev_cf["frame_num"] or next_cf is None:
-                look_at = p0
-                rot = r0
-                dist = d0
-                fov = f0
-            else:
-                p1 = np.array(next_cf["position"])
-                r1 = np.array(next_cf["rotation"]) # xyzw
-                d1 = next_cf["dist"]
-                f1 = next_cf["fov"]
-                
-                t = (frame - prev_cf["frame_num"]) / (next_cf["frame_num"] - prev_cf["frame_num"])
-                
-                look_at = p0 + t * (p1 - p0)
-                rot = rot_lerp(r0, r1, t)
-                dist = d0 + t * (d1 - d0)
-                fov = f0 + t * (f1 - f0)
-            
-            # Convert to LookAt + Dist + Rot representation
-            # We construct camera_pos from look_at (stored in position)
-            # But the VMD stores TargetPos, Dist, Rot.
             # Our exported NPY format was: CameraPos(3), FOV(1), Rot(4).
             
-            # Calc camera pos
-            rot_mat = R.from_quat(rot).as_matrix()
-            forward = rot_mat[:, 2]
-            cam_pos = look_at + forward * dist
-            
-            frame_data.extend(cam_pos * 1000 / 32768)
-            frame_data.append(float(fov) / 180)
-            frame_data.extend(rot)
+            frame_data.extend(camera.global_pos * 1000 / 32768)
+            frame_data.append(float(camera.current_fov) / 180)
+            frame_data.extend(camera.global_rot)
         else:
             frame_data.extend([0,0.03,0.1])
             frame_data.append(30.0 / 180)

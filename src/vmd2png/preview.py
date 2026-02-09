@@ -4,74 +4,9 @@ from matplotlib.widgets import Slider, Button
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-from .bone import rot_lerp
 from .converter import load_motion_dict
 from .skeleton import build_standard_skeleton
-from .vmd import load_vmd_to_skeleton, animate_skeleton
-
-class Camera:
-    def __init__(self, frames):
-        self.frames = sorted(frames, key=lambda x: x["frame_num"]) if frames else []
-        self.global_pos = np.zeros(3)
-        self.global_rot = np.array([0., 0., 0., 1.])
-        self.current_fov = 30.0
-
-    def update(self, frame_num):
-        if not self.frames:
-            return
-
-        # Binary search for frames
-        frames = self.frames
-        low, high = 0, len(frames) - 1
-        prev_idx = 0
-        
-        while low <= high:
-            mid = (low + high) // 2
-            if frames[mid]["frame_num"] <= frame_num:
-                prev_idx = mid
-                low = mid + 1
-            else:
-                high = mid - 1
-        
-        prev_frame = frames[prev_idx]
-        next_idx = prev_idx + 1
-        next_frame = frames[next_idx] if next_idx < len(frames) else None
-        
-        # Interpolation factors
-        if frame_num == prev_frame["frame_num"] or next_frame is None:
-            t = 0.0
-            next_frame = prev_frame 
-        else:
-            t = (frame_num - prev_frame["frame_num"]) / (next_frame["frame_num"] - prev_frame["frame_num"])
-
-        # Interpolate Target Position
-        p1 = np.array(prev_frame["position"])
-        p2 = np.array(next_frame["position"])
-        pos = p1 + t * (p2 - p1)
-        
-        # Interpolate Rotation
-        r1 = np.array(prev_frame["rotation"])
-        r2 = np.array(next_frame["rotation"])
-        rot = rot_lerp(r1, r2, t)
-        
-        # Interpolate Distance
-        d1 = prev_frame["dist"]
-        d2 = next_frame["dist"]
-        dist = d1 + t * (d2 - d1)
-        
-        # Interpolate FOV
-        f1 = prev_frame["fov"]
-        f2 = next_frame["fov"]
-        fov = f1 + t * (f2 - f1)
-        
-        # Calculate Global Cam Params
-        r = R.from_quat(rot)
-        # VMD Logic: CameraPos = Target + Rot * (0, 0, dist)
-        offset = r.apply(np.array([0, 0, dist]))
-        
-        self.global_pos = pos + offset
-        self.global_rot = rot
-        self.current_fov = fov
+from .vmd import load_vmd_to_skeleton, animate_skeleton, Camera
 
 def draw_camera_frustum(ax, camera, scale=5.0):
     if not camera.frames:
