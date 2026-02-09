@@ -122,31 +122,28 @@ def test_pipeline():
     success = export_vmd_to_files(vmd_path, files_dir)
     assert success, "Failed to export files"
     
-    exp_char_png = os.path.join(files_dir, "test_actor.png")
-    exp_cam_png = os.path.join(files_dir, "test_camera.png")
-    assert os.path.exists(exp_char_png), "Character PNG missing"
-    assert os.path.exists(exp_cam_png), "Camera PNG missing"
+    exp_motion_png = os.path.join(files_dir, "test_motion.png")
+    assert os.path.exists(exp_motion_png), "Motion PNG missing"
     print("   Export successful.")
     
     # 4. Load from PNG and Convert back
     print("4. Importing from PNG and converting back to VMD...")
-    back_vmd_char = os.path.join(output_dir, "back_char.vmd")
-    back_vmd_cam = os.path.join(output_dir, "back_cam.vmd")
+    back_vmd = os.path.join(output_dir, "back_motion.vmd")
     
-    success, parsed_anim = convert_motion_to_vmd(exp_char_png, back_vmd_char, mode='actor')
-    assert success, "Failed to convert character PNG to VMD"
-    print(f'length: {len(parsed_anim["bone_frames"])}')
-    assert len(parsed_anim["bone_frames"]) / 71 == 2000
+    success, parsed_anim = convert_motion_to_vmd(exp_motion_png, back_vmd, mode='combined')
+    assert success, "Failed to convert motion PNG to VMD"
     
-    success, parsed_anim = convert_motion_to_vmd(exp_cam_png, back_vmd_cam, mode='camera')
-    assert success, "Failed to convert camera PNG to VMD"
-    print(f'length: {len(parsed_anim["camera_frames"])}')
+    print(f'Bone frames: {len(parsed_anim["bone_frames"])}')
+    assert len(parsed_anim["bone_frames"]) / 73 == 2000
+    
+    print(f'Camera frames: {len(parsed_anim["camera_frames"])}')
     assert len(parsed_anim["camera_frames"]) == 2000
+
     print("   Conversion successful.")
     
     # 5. Verify Content of converted VMD
     print("5. Verifying converted VMD...")
-    success, char_anim = parse_vmd(back_vmd_char)
+    success, char_anim = parse_vmd(back_vmd)
     # The converted VMD will have frames for ALL bones (baked), not just the original ones.
     # So count will be frames * num_bones.
     assert len(char_anim["bone_frames"]) >= 10

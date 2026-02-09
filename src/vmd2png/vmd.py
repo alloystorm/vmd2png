@@ -305,9 +305,9 @@ def write_vmd(file_path, animation_dict, model_name="MotionOutput"):
         print(f"Error writing VMD: {e}")
         return False
 
-def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=True, leg_ik=False):
+def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mode='local', verbose=True, leg_ik=False):
     """
-    Process VMD and return separated character and camera data.
+    Process VMD and return combined character and camera data.
     """
     root, all_bones = build_standard_skeleton()
     center = root.find("Center")
@@ -324,11 +324,16 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
         if verbose: print(f"No frames found in animation: {file_path}")
         return None
     
-    character_data = []
-    camera_data = []
+    combined_data = []
+    
+    # Handle camera frames (from separate file or original file)
+    camera_frames = anim["camera_frames"]
+    if camera_vmd_path and os.path.exists(camera_vmd_path):
+        c_success, c_anim = parse_vmd(camera_vmd_path, unit=unit, fps=fps)
+        if c_success and c_anim["camera_frames"]:
+             camera_frames = c_anim["camera_frames"]
     
     # Sort camera frames once
-    camera_frames = anim["camera_frames"]
     camera_frames.sort(key=lambda x: x["frame_num"])
     has_camera = len(camera_frames) > 0
     
@@ -341,15 +346,13 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
         # Character
         centerPos = center.globalPos.copy() - center.zeroPos
         
-        frame_char = []
+        frame_data = []
         # Format: Center Offset(3) + Scale(1)? + Bones...
-        frame_char.extend(centerPos * 1000 / 32768)
-        frame_char.append(1.0)
-        frame_char.extend(root.export_data(mode=mode))
-        character_data.append(frame_char)
+        frame_data.extend(centerPos * 1000 / 32768)
+        frame_data.append(1.0)
+        frame_data.extend(root.export_data(mode=mode))
         
         # Camera
-        frame_cam = []
         if has_camera:
             # Binary search for keyframes
             low, high = 0, len(camera_frames) - 1
@@ -401,19 +404,17 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
             forward = rot_mat[:, 2]
             cam_pos = look_at + forward * dist
             
-            frame_cam.extend(cam_pos * 1000 / 32768)
-            frame_cam.append(float(fov) / 180)
-            frame_cam.extend(rot)
+            frame_data.extend(cam_pos * 1000 / 32768)
+            frame_data.append(float(fov) / 180)
+            frame_data.extend(rot)
         else:
-            frame_cam.extend([0,0.03,0.1])
-            frame_cam.append(30.0 / 180)
-            frame_cam.extend([0,0,0,1])
-        camera_data.append(frame_cam)
+            frame_data.extend([0,0.03,0.1])
+            frame_data.append(30.0 / 180)
+            frame_data.extend([0,0,0,1])
         
-    return {
-        'actor': np.array(character_data, dtype=np.float32),
-        'camera': np.array(camera_data, dtype=np.float32) if anim["camera_frames"] else None
-    }
+        combined_data.append(frame_data)
+        
+    return np.array(combined_data, dtype=np.float32)
     
 def load_vmd_to_skeleton(animation, skeleton_bones):
     """
