@@ -122,7 +122,7 @@ def test_pipeline():
     success = export_vmd_to_files(vmd_path, files_dir)
     assert success, "Failed to export files"
     
-    exp_char_png = os.path.join(files_dir, "test_character.png")
+    exp_char_png = os.path.join(files_dir, "test_actor.png")
     exp_cam_png = os.path.join(files_dir, "test_camera.png")
     assert os.path.exists(exp_char_png), "Character PNG missing"
     assert os.path.exists(exp_cam_png), "Camera PNG missing"
@@ -133,7 +133,7 @@ def test_pipeline():
     back_vmd_char = os.path.join(output_dir, "back_char.vmd")
     back_vmd_cam = os.path.join(output_dir, "back_cam.vmd")
     
-    success, parsed_anim = convert_motion_to_vmd(exp_char_png, back_vmd_char, mode='character')
+    success, parsed_anim = convert_motion_to_vmd(exp_char_png, back_vmd_char, mode='actor')
     assert success, "Failed to convert character PNG to VMD"
     print(f'length: {len(parsed_anim["bone_frames"])}')
     assert len(parsed_anim["bone_frames"]) / 71 == 2000

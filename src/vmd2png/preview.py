@@ -26,7 +26,7 @@ def plot_skeleton_3d(root, ax):
     # Draw logic
     collect_bones(root, None)
 
-def preview_motion(input_path, mode='character', fps=30, leg_ik=False):
+def preview_motion(input_path, mode='actor', fps=30, leg_ik=False):
     """
     Preview motion from VMD, NPY, or PNG file.
     """

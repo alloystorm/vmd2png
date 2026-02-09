@@ -371,7 +371,7 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
         camera_data.append(frame_cam)
         
     return {
-        'character': np.array(character_data, dtype=np.float32),
+        'actor': np.array(character_data, dtype=np.float32),
         'camera': np.array(camera_data, dtype=np.float32) if anim["camera_frames"] else None
     }
     

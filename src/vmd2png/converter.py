@@ -140,10 +140,10 @@ def export_vmd_to_files(vmd_path, output_dir, leg_ik=False):
     name = os.path.basename(vmd_path).replace('.vmd', '')
     os.makedirs(output_dir, exist_ok=True)
     
-    if results['character'] is not None:
-        c_data = results['character']
-        np.save(os.path.join(output_dir, f"{name}_character.npy"), c_data)
-        save_as_png_16bit(c_data, os.path.join(output_dir, f"{name}_character.png"), -1, 1)
+    if results['actor'] is not None:
+        c_data = results['actor']
+        np.save(os.path.join(output_dir, f"{name}_actor.npy"), c_data)
+        save_as_png_16bit(c_data, os.path.join(output_dir, f"{name}_actor.png"), -1, 1)
         
     if results['camera'] is not None:
         cam_data = results['camera']
@@ -152,7 +152,7 @@ def export_vmd_to_files(vmd_path, output_dir, leg_ik=False):
         
     return True
 
-def load_motion_dict(input_path, mode='character', leg_ik=False):
+def load_motion_dict(input_path, mode='actor', leg_ik=False):
     ext = os.path.splitext(input_path)[1].lower()
     if ext == '.vmd':
         # success, anim = vmd_to_motion_data(input_path, verbose=False) # Wait, vmd_to_motion_data returns data arrays, not anim dict.
@@ -258,7 +258,7 @@ def load_motion_dict(input_path, mode='character', leg_ik=False):
 
     return anim
 
-def convert_motion_to_vmd(input_path, output_vmd_path, mode='character'):
+def convert_motion_to_vmd(input_path, output_vmd_path, mode='actor'):
     anim = load_motion_dict(input_path, mode)
     if not anim:
         return False, anim

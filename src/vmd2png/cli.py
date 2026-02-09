@@ -11,7 +11,7 @@ def main():
     # Preview Command
     parser_preview = subparsers.add_parser("preview", help="Preview motion file (.vmd, .png, .npy)")
     parser_preview.add_argument("path", help="Path to motion file")
-    parser_preview.add_argument("--mode", choices=['character', 'camera'], default='character', help="Preview mode")
+    parser_preview.add_argument("--mode", choices=['actor', 'camera'], default='actor', help="Preview mode")
     parser_preview.add_argument("--fps", type=int, default=30, help="Playback FPS")
     parser_preview.add_argument("--ik", action="store_true", help="Use leg IK")
     
@@ -19,7 +19,7 @@ def main():
     parser_convert = subparsers.add_parser("convert", help="Convert between VMD and PNG/NPY")
     parser_convert.add_argument("input", help="Input file path")
     parser_convert.add_argument("-o", "--output", help="Output path or directory")
-    parser_convert.add_argument("--mode", choices=['character', 'camera'], default='character', help="Motion mode (for PNG/NPY input)")
+    parser_convert.add_argument("--mode", choices=['actor', 'camera'], default='actor', help="Motion mode (for PNG/NPY input)")
     # We can infer direction from extension, but flags help
     parser_convert.add_argument("--npy", action="store_true", help="Export NPY (when input is VMD)")
     parser_convert.add_argument("--png", action="store_true", help="Export PNG (when input is VMD)")
