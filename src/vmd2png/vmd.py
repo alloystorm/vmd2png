@@ -181,7 +181,7 @@ def parse_vmd(file_path, unit=0.085, fps=30.0):
                 
                 frame_data = {
                     "frame_num": frame_num,
-                    "position": (px * unit, py * unit, pz * unit),
+                    "position": (-px * unit, py * unit, -pz * unit),
                     "rotation": (rx, ry, rz, rw),
                     "bezier": bezier,
                 }
@@ -190,7 +190,7 @@ def parse_vmd(file_path, unit=0.085, fps=30.0):
                 bone_frames.append({
                     "name": name,
                     "frame_num": frame_num,
-                    "position": (px * unit, py * unit, pz * unit),
+                    "position": (-px * unit, py * unit, -pz * unit),
                     "rotation": (rx, ry, rz, rw),
                     "bezier": bezier,
                 })
@@ -229,7 +229,7 @@ def parse_vmd(file_path, unit=0.085, fps=30.0):
                 rot = R.from_euler('xyz', [rx_deg, ry_deg, rz_deg], degrees=True)
                 camera_frames.append({
                     "frame_num": frame_num,
-                    "position": (px * unit, py * unit, pz * unit),
+                    "position": (-px * unit, py * unit, -pz * unit),
                     "rotation": rot.as_quat(),
                     "dist": dist,
                     "fov": fov,
