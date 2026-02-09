@@ -78,6 +78,8 @@ class Camera:
         self.global_pos = np.zeros(3)
         self.global_rot = np.array([0., 0., 0., 1.])
         self.current_fov = 30.0
+        self.target_pos = np.zeros(3)
+        self.distance = 0.0
 
     def update(self, frame_num):
         if not self.frames:
@@ -132,9 +134,11 @@ class Camera:
         # VMD Logic: CameraPos = Target + Rot * (0, 0, dist)
         offset = r.apply(np.array([0, 0, dist]))
         
+        self.target_pos = pos
         self.global_pos = pos + offset
         self.global_rot = rot
         self.current_fov = fov
+        self.distance = dist
 
 def parse_vmd(file_path, unit=0.085, fps=30.0):
     """
