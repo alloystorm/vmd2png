@@ -125,7 +125,7 @@ def preview_motion(input_path, mode='actor', fps=30, leg_ik=False):
         camera.update(frame)
         
         # Plot Skeleton
-        plot_skeleton_3d(root, ax)
+        plot_skeleton_3d(center, ax)
         
         # Plot Camera
         draw_camera_frustum(ax, camera, scale=2.0)
