@@ -132,7 +132,9 @@ def preview_motion(input_path, mode='actor', fps=30, leg_ik=False):
         
         # Dynamic axis limits based on Center bone
         cx, cy, cz = center.globalPos[0], center.globalPos[1], center.globalPos[2]
-        
+        #cx = camera.global_pos[0] if camera.global_pos is not None else cx
+        #cz = camera.global_pos[2] if camera.global_pos is not None else cz
+
         # Plot coordinates: x=X, y=Z(Depth), z=Y(Height)
         radius = 1 
         
