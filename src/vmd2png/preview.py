@@ -3,9 +3,122 @@ import matplotlib.animation as animation
 from matplotlib.widgets import Slider, Button
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
+from scipy.spatial.transform import Rotation as R
+from .bone import rot_lerp
 from .converter import load_motion_dict
 from .skeleton import build_standard_skeleton
 from .vmd import load_vmd_to_skeleton, animate_skeleton
+
+class Camera:
+    def __init__(self, frames):
+        self.frames = sorted(frames, key=lambda x: x["frame_num"]) if frames else []
+        self.global_pos = np.zeros(3)
+        self.global_rot = np.array([0., 0., 0., 1.])
+        self.current_fov = 30.0
+
+    def update(self, frame_num):
+        if not self.frames:
+            return
+
+        # Binary search for frames
+        frames = self.frames
+        low, high = 0, len(frames) - 1
+        prev_idx = 0
+        
+        while low <= high:
+            mid = (low + high) // 2
+            if frames[mid]["frame_num"] <= frame_num:
+                prev_idx = mid
+                low = mid + 1
+            else:
+                high = mid - 1
+        
+        prev_frame = frames[prev_idx]
+        next_idx = prev_idx + 1
+        next_frame = frames[next_idx] if next_idx < len(frames) else None
+        
+        # Interpolation factors
+        if frame_num == prev_frame["frame_num"] or next_frame is None:
+            t = 0.0
+            next_frame = prev_frame 
+        else:
+            t = (frame_num - prev_frame["frame_num"]) / (next_frame["frame_num"] - prev_frame["frame_num"])
+
+        # Interpolate Target Position
+        p1 = np.array(prev_frame["position"])
+        p2 = np.array(next_frame["position"])
+        pos = p1 + t * (p2 - p1)
+        
+        # Interpolate Rotation
+        r1 = np.array(prev_frame["rotation"])
+        r2 = np.array(next_frame["rotation"])
+        rot = rot_lerp(r1, r2, t)
+        
+        # Interpolate Distance
+        d1 = prev_frame["dist"]
+        d2 = next_frame["dist"]
+        dist = d1 + t * (d2 - d1)
+        
+        # Interpolate FOV
+        f1 = prev_frame["fov"]
+        f2 = next_frame["fov"]
+        fov = f1 + t * (f2 - f1)
+        
+        # Calculate Global Cam Params
+        r = R.from_quat(rot)
+        # VMD Logic: CameraPos = Target + Rot * (0, 0, dist)
+        offset = r.apply(np.array([0, 0, dist]))
+        
+        self.global_pos = pos + offset
+        self.global_rot = rot
+        self.current_fov = fov
+
+def draw_camera_frustum(ax, camera, scale=5.0):
+    if not camera.frames:
+        return
+
+    pos = camera.global_pos
+    rot = camera.global_rot
+    fov = camera.current_fov
+    
+    r = R.from_quat(rot)
+    
+    # Camera looks towards -Z in its local frame (assuming standard convention relative to the 'forward' Z vector from target)
+    
+    fov_rad = np.radians(fov)
+    # scale is distance to far plane
+    h = 2.0 * scale * np.tan(fov_rad / 2.0)
+    w = h * (16/9) # Assume 16:9
+    
+    # Frustum far plane corners in local space (Z = -scale)
+    corners = np.array([
+        [-w/2, h/2, -scale],  # Top Left
+        [w/2, h/2, -scale],   # Top Right
+        [w/2, -h/2, -scale],  # Bottom Right
+        [-w/2, -h/2, -scale]  # Bottom Left
+    ])
+    
+    corners_world = r.apply(corners) + pos
+    
+    # Use helper to map global to plot coordinates: X, Z(depth), Y(up)
+    def to_plot(v): return v[0], v[2], v[1]
+    
+    px, pz, py = to_plot(pos)
+    
+    for c in corners_world:
+        cx, cz, cy = to_plot(c)
+        ax.plot([px, cx], [pz, cz], [py, cy], 'k-', lw=1, alpha=0.3)
+        
+    for i in range(4):
+        p1 = to_plot(corners_world[i])
+        p2 = to_plot(corners_world[(i+1)%4])
+        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]], 'k-', lw=1, alpha=0.3)
+        
+    # Draw Up vector
+    up_local = np.array([0, 0.5 * scale, 0])
+    up_world = r.apply(up_local) + pos
+    ux, uz, uy = to_plot(up_world)
+    ax.plot([px, ux], [pz, uz], [py, uy], 'r-', lw=1)
 
 def plot_skeleton_3d(root, ax):
     """
@@ -38,12 +151,18 @@ def preview_motion(input_path, mode='actor', fps=30, leg_ik=False):
     root, map_bones = build_standard_skeleton()
     load_vmd_to_skeleton(anim, map_bones)
     
+    # Setup Camera
+    camera = Camera(anim.get("camera_frames", []))
+    
     total_frames = int(anim["duration"] * 30) # approx
-    if total_frames == 0 and "bone_frames" in anim:
-        # Estimate from max frame
+    if total_frames == 0:
         max_f = 0
-        for f in anim["bone_frames"]:
-            if f["frame_num"] > max_f: max_f = f["frame_num"]
+        if "bone_frames" in anim:
+            for f in anim["bone_frames"]:
+                if f["frame_num"] > max_f: max_f = f["frame_num"]
+        if "camera_frames" in anim:
+            for f in anim["camera_frames"]:
+                if f["frame_num"] > max_f: max_f = f["frame_num"]
         total_frames = max_f + 1
         
     print(f"Previewing {total_frames} frames...")
@@ -63,60 +182,29 @@ def preview_motion(input_path, mode='actor', fps=30, leg_ik=False):
     def update_plot(frame, leg_ik):
         ax.clear()
         
-        # Animate
+        # Animate Skeleton
         animate_skeleton(root, frame, leg_ik)
         center.update_world_pos() # Ensure global positions are updated
+        
+        # Animate Camera
+        camera.update(frame)
+        
+        # Plot Skeleton
+        plot_skeleton_3d(root, ax)
+        
+        # Plot Camera
+        draw_camera_frustum(ax, camera, scale=2.0)
         
         # Dynamic axis limits based on Center bone
         cx, cy, cz = center.globalPos[0], center.globalPos[1], center.globalPos[2]
         
-        # Matplotlib 3D axes: X is X, Y is Z(depth), Z is Y(up) based on mplot3d conventions vs standard 3D logic
-        # But in this code:
-        # plot_skeleton_3d uses: x=global[0], y=global[2] (depth), z=global[1] (up)
-        # So ax.set_xlim corresponds to global[0]
-        # ax.set_ylim corresponds to global[2]
-        # ax.set_zlim corresponds to global[1]
-
-        radius = 20 # Original large view
-        # The user requested +/- 2 relative to center. 
-        # But global[1] is vertical (Y), global[2] is depth (Z).
+        # Plot coordinates: x=X, y=Z(Depth), z=Y(Height)
+        radius = 1 
         
-        ax.set_xlim(cx - 2, cx + 2)
-        ax.set_ylim(cz - 2, cz + 2) # Depth
-        ax.set_zlim(0, 4) # Height usually starts from ground
+        ax.set_xlim(cx - radius, cx + radius)
+        ax.set_ylim(cz - radius, cz + radius)
+        ax.set_zlim(0, radius * 2)
         
-        # User requested: "plot range from global position of center bone +/- 2"
-        # Since this is a very tight zoom, let's apply it strictly as requested for X/Z (horizontal plane)
-        # and keep Y (vertical) reasonable or centered too.
-        
-        # Applying tight focus on center bone
-        ax.set_xlim(cx - 2, cx + 2) # Keeping wide X for visibility, or user wants tight?
-        # Re-reading: "update the plot range from global position of center bone +/- 2" implies tight follow.
-        
-        range_val = 15 # Keep it viewable. +/- 2 might be too small for a full skeleton.
-                       # Assuming user meant "follow camera" logic. 
-                       # Let's interpret +/- 2 as offset from the center bone specific to the viewport center,
-                       # but keep the viewport size meaningful.
-        
-        # Actually, let's try to center the camera on the bone but keep the field of view constant.
-        ax.set_xlim(cx - 2, cx + 2)
-        ax.set_ylim(cz - 2, cz + 2)
-        ax.set_zlim(0, 4)
-        
-        # If the user literally wants the axis limits to be [cx-2, cx+2], that's a 4 unit window.
-        # Most MMD models are ~15-20 units tall. A 4 unit window will only show the hips.
-        # I will assume they want the camera CENTERED on the bone, with the previous scale.
-        # But let's check if they meant +/- 20? Or maybe they really want a macro view?
-        # Given "motion_encoder", maybe precise tracking is needed.
-        # Let's implement centering with a reasonable Fixed FOV, but shifted by Center position.
-        
-        # Implementation of centering logic:
-        # Shift limits so center is in the middle
-        ax.set_xlim(cx - 2, cx + 2)
-        ax.set_ylim(cz - 2, cz + 2)
-        
-        # Plot
-        plot_skeleton_3d(root, ax)
         ax.set_title(f"Frame: {int(frame)}")
         ax.set_xlabel('X')
         ax.set_ylabel('Z (Depth)')
