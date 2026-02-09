@@ -7,6 +7,7 @@ from scipy.spatial.transform import Rotation as R, Slerp
 import time
 from .ik import solve_two_bone_ik
 from .skeleton import build_standard_skeleton, verify_global_positions
+from .bone import rot_lerp
 
 # Japanese to English translations
 bone_name_translation = {
@@ -325,7 +326,11 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
     
     character_data = []
     camera_data = []
-    cam_frames_dict = {f["frame_num"]: f for f in anim["camera_frames"]}
+    
+    # Sort camera frames once
+    camera_frames = anim["camera_frames"]
+    camera_frames.sort(key=lambda x: x["frame_num"])
+    has_camera = len(camera_frames) > 0
     
     if verbose: print(f"Processing {totalFrames} frames...")
 
@@ -345,16 +350,51 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
         
         # Camera
         frame_cam = []
-        if frame in cam_frames_dict:
-            cf = cam_frames_dict[frame]
+        if has_camera:
+            # Binary search for keyframes
+            low, high = 0, len(camera_frames) - 1
+            prev_idx = 0
+            
+            while low <= high:
+                mid = (low + high) // 2
+                if camera_frames[mid]["frame_num"] <= frame:
+                    prev_idx = mid
+                    low = mid + 1
+                else:
+                    high = mid - 1
+            
+            prev_cf = camera_frames[prev_idx]
+            next_idx = prev_idx + 1
+            next_cf = camera_frames[next_idx] if next_idx < len(camera_frames) else None
+
+            # Values to interpolate
+            p0 = np.array(prev_cf["position"])
+            r0 = np.array(prev_cf["rotation"]) # xyzw
+            d0 = prev_cf["dist"]
+            f0 = prev_cf["fov"]
+
+            if frame == prev_cf["frame_num"] or next_cf is None:
+                look_at = p0
+                rot = r0
+                dist = d0
+                fov = f0
+            else:
+                p1 = np.array(next_cf["position"])
+                r1 = np.array(next_cf["rotation"]) # xyzw
+                d1 = next_cf["dist"]
+                f1 = next_cf["fov"]
+                
+                t = (frame - prev_cf["frame_num"]) / (next_cf["frame_num"] - prev_cf["frame_num"])
+                
+                look_at = p0 + t * (p1 - p0)
+                rot = rot_lerp(r0, r1, t)
+                dist = d0 + t * (d1 - d0)
+                fov = f0 + t * (f1 - f0)
+            
             # Convert to LookAt + Dist + Rot representation
             # We construct camera_pos from look_at (stored in position)
             # But the VMD stores TargetPos, Dist, Rot.
             # Our exported NPY format was: CameraPos(3), FOV(1), Rot(4).
-            
-            look_at = np.array(cf["position"])
-            dist = cf["dist"]
-            rot = cf["rotation"]
             
             # Calc camera pos
             rot_mat = R.from_quat(rot).as_matrix()
@@ -362,7 +402,7 @@ def vmd_to_motion_data(file_path, unit=0.085, fps=30.0, mode='local', verbose=Tr
             cam_pos = look_at + forward * dist
             
             frame_cam.extend(cam_pos * 1000 / 32768)
-            frame_cam.append(float(cf["fov"]) / 180)
+            frame_cam.append(float(fov) / 180)
             frame_cam.extend(rot)
         else:
             frame_cam.extend([0,0.03,0.1])
