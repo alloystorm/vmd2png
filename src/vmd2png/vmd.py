@@ -235,7 +235,7 @@ def parse_vmd(file_path, unit=0.085, fps=30.0):
                     "frame_num": frame_num,
                     "position": (-px * unit, py * unit, -pz * unit),
                     "rotation": rot.as_quat(),
-                    "dist": dist,
+                    "dist": dist * unit,
                     "fov": fov,
                     "bezier": bezier,
                     "is_perspective": bool(is_perspective),
