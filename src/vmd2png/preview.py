@@ -135,7 +135,7 @@ def preview_motion(input_path, mode='actor', fps=30, leg_ik=False):
         target_center = np.array([target_pos_vmd[0], target_pos_vmd[2], target_pos_vmd[1]])
         
         # Plot coordinates: x=X, y=Z(Depth), z=Y(Height)
-        pc = target_center
+        pc = center.globalPos if center else np.array([0, 0, 0])
         radius = 1 
         
         ax.set_xlim(pc[0] - radius, pc[0] + radius)
