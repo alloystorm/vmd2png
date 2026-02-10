@@ -131,10 +131,9 @@ def preview_motion(input_path, mode='actor', fps=30, leg_ik=False):
         draw_camera_frustum(ax, camera, scale=2.0)
         
         # Plot coordinates: x=X, y=Z(Depth), z=Y(Height)
-        # distance from center to camera divide by 2
         radius = np.linalg.norm(camera.global_pos - center.globalPos)
-        pc = center.globalPos #(center.globalPos + camera.global_pos) / 2
-        # print(f"Frame {frame}: Center {center.globalPos}, Camera {camera.global_pos}, Radius {radius}, pc {pc}")
+        radius = max(radius, 1.0) # Avoid too close zoom
+        pc = center.globalPos
         
         ax.set_xlim(pc[0] - radius, pc[0] + radius)
         ax.set_zlim(0, radius * 2)
