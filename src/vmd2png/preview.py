@@ -137,7 +137,7 @@ def preview_motion(input_path, mode='actor', fps=30, leg_ik=False):
         print(f"Frame {frame}: Center {center.globalPos}, Camera {camera.global_pos}, Radius {radius}, pc {pc}")
         
         ax.set_xlim(pc[0] - radius, pc[0] + radius)
-        ax.set_zlim(pc[1] - radius, pc[1] + radius)
+        ax.set_zlim(0, radius * 2)
         ax.set_ylim(pc[2] - radius, pc[2] + radius)
         
         ax.set_title(f"Frame: {int(frame)}")
