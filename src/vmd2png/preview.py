@@ -134,10 +134,11 @@ def preview_motion(input_path, mode='actor', fps=30, leg_ik=False):
         # distance from center to camera divide by 2
         radius = np.linalg.norm(camera.global_pos - center.globalPos) / 2.0
         pc = (center.globalPos + camera.global_pos) / 2
+        print(f"Frame {frame}: Center {center.globalPos}, Camera {camera.global_pos}, Radius {radius}, pc {pc}")
         
         ax.set_xlim(pc[0] - radius, pc[0] + radius)
-        ax.set_ylim(pc[1] - radius, pc[1] + radius)
-        ax.set_zlim(pc[2] - radius, pc[2] + radius)
+        ax.set_zlim(pc[1] - radius, pc[1] + radius)
+        ax.set_ylim(pc[2] - radius, pc[2] + radius)
         
         ax.set_title(f"Frame: {int(frame)}")
         ax.set_xlabel('X')
