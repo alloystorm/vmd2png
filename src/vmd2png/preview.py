@@ -27,10 +27,10 @@ def draw_camera_frustum(ax, camera, scale=5.0):
     
     # Frustum far plane corners in local space (Z = -scale)
     corners = np.array([
-        [-w/2, h/2, -scale],  # Top Left
-        [w/2, h/2, -scale],   # Top Right
-        [w/2, -h/2, -scale],  # Bottom Right
-        [-w/2, -h/2, -scale]  # Bottom Left
+        [-w/2, h/2, scale],  # Top Left
+        [w/2, h/2, scale],   # Top Right
+        [w/2, -h/2, scale],  # Bottom Right
+        [-w/2, -h/2, scale]  # Bottom Left
     ])
     
     corners_world = r.apply(corners) + pos
@@ -134,7 +134,7 @@ def preview_motion(input_path, mode='actor', fps=30, leg_ik=False):
         # distance from center to camera divide by 2
         radius = np.linalg.norm(camera.global_pos - center.globalPos) / 2.0
         pc = (center.globalPos + camera.global_pos) / 2
-        print(f"Frame {frame}: Center {center.globalPos}, Camera {camera.global_pos}, Radius {radius}, pc {pc}")
+        # print(f"Frame {frame}: Center {center.globalPos}, Camera {camera.global_pos}, Radius {radius}, pc {pc}")
         
         ax.set_xlim(pc[0] - radius, pc[0] + radius)
         ax.set_zlim(0, radius * 2)
