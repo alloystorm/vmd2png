@@ -130,48 +130,14 @@ def preview_motion(input_path, mode='actor', fps=30, leg_ik=False):
         # Plot Camera
         draw_camera_frustum(ax, camera, scale=2.0)
         
-        # Dynamic axis limits based on camera target
-        target_pos_vmd = camera.target_pos
-        target_center = np.array([target_pos_vmd[0], target_pos_vmd[2], target_pos_vmd[1]])
-        
         # Plot coordinates: x=X, y=Z(Depth), z=Y(Height)
-        pc = center.globalPos if center else np.array([0, 0, 0])
-        radius = 1 
+        # distance from center to camera divide by 2
+        radius = np.linalg.norm(camera.global_pos - center.globalPos) / 2.0
+        pc = (center.globalPos + camera.global_pos) / 2
         
         ax.set_xlim(pc[0] - radius, pc[0] + radius)
         ax.set_ylim(pc[1] - radius, pc[1] + radius)
         ax.set_zlim(pc[2] - radius, pc[2] + radius)
-        
-        # Apply Camera View
-        v_offset = camera.global_pos - camera.target_pos
-        dx, dy, dz = v_offset
-        
-        # Convert to polar for Matplotlib
-        # Matplotlib Axes3D Z is up. X-Y plane is ground.
-        # Plot coords: px=dx, py=dz, pz=dy.
-        # Radius r = dist
-        r_dist = np.sqrt(dx*dx + dy*dy + dz*dz)
-        if r_dist > 1e-4:
-            # Elevation: Angle from X-Y plane (ground) to vector.
-            # sin(elev) = pz / r = dy / r
-            elev = np.degrees(np.arcsin(dy / r_dist))
-            
-            # Azimuth: Angle in X-Y plane.
-            # vector projection on plane is (px, py) = (dx, dz)
-            # azim = degrees(atan2(py, px)) ?
-            # Matplotlib azim=0 usually looks from -Y towards +Y or something like that.
-            # Let's try standard atan2(dz, dx)
-            azim = np.degrees(np.arctan2(dz, dx))
-            
-            ax.view_init(elev=elev, azim=azim)
-            
-            # Approximate FOV effect by adjusting distance
-            if camera.current_fov > 0:
-                 fov_rad = np.radians(camera.current_fov)
-                 base_fov_rad = np.radians(30)
-                 base_dist = 10.0
-                 new_dist = base_dist * np.tan(base_fov_rad/2) / np.tan(fov_rad/2)
-                 ax.dist = new_dist
         
         ax.set_title(f"Frame: {int(frame)}")
         ax.set_xlabel('X')
