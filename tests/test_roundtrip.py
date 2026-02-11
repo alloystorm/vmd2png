@@ -130,7 +130,7 @@ def test_pipeline():
     print("4. Importing from PNG and converting back to VMD...")
     back_vmd = os.path.join(output_dir, "back_motion.vmd")
     
-    success, parsed_anim = convert_motion_to_vmd(exp_motion_png, back_vmd, mode='combined')
+    success, parsed_anim = convert_motion_to_vmd(exp_motion_png, back_vmd)
     assert success, "Failed to convert motion PNG to VMD"
     
     print(f'Bone frames: {len(parsed_anim["bone_frames"])}')

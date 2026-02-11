@@ -11,13 +11,14 @@ def main():
     # Preview Command
     parser_preview = subparsers.add_parser("preview", help="Preview motion file (.vmd, .png, .npy)")
     parser_preview.add_argument("path", help="Path to motion file")
+    parser_preview.add_argument("--camera", help="Path of camera VMD file to be merged")
     parser_preview.add_argument("--fps", type=int, default=30, help="Playback FPS")
     parser_preview.add_argument("--ik", action="store_true", help="Use leg IK")
-    parser_preview.add_argument("--camera-motion", help="Path to camera VMD file to overlay")
     
     # Convert Command
     parser_convert = subparsers.add_parser("convert", help="Convert between VMD and PNG/NPY")
     parser_convert.add_argument("input", help="Input file path")
+    parser_convert.add_argument("--camera", help="Path of camera VMD file to be merged (for VMD input)")
     parser_convert.add_argument("-o", "--output", help="Output path or directory")
     # We can infer direction from extension, but flags help
     parser_convert.add_argument("--npy", action="store_true", help="Export NPY (when input is VMD)")
@@ -29,7 +30,7 @@ def main():
         if not os.path.exists(args.path):
             print(f"Error: File not found: {args.path}")
             sys.exit(1)
-        preview_motion(args.path, fps=args.fps, camera_vmd_path=args.camera_motion)
+        preview_motion(args.path, fps=args.fps, camera_vmd_path=args.camera, leg_ik=args.ik)
         
     elif args.command == "convert":
         if not os.path.exists(args.input):
@@ -47,7 +48,7 @@ def main():
             # Ideally export_vmd_to_files should allow filtering NPY/PNG?
             # Currently it exports both.
             # We'll just run it.
-            success = export_vmd_to_files(args.input, output_dir, leg_ik=args.ik)
+            success = export_vmd_to_files(args.input, output_dir, leg_ik=args.ik, camera_vmd_path=args.camera)
             if success:
                 print("Done.")
             else:
