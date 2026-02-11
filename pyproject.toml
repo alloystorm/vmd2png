@@ -21,6 +21,7 @@ dependencies = [
     "scipy",
     "Pillow",
     "matplotlib", 
+    "opencv-python",
 ]
 
 [project.urls]

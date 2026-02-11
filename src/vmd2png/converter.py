@@ -104,11 +104,15 @@ def export_vmd_to_files(vmd_path, output_path=None, out_type='png', leg_ik=False
     
     if output_path is None:
         output_path = os.path.dirname(os.path.abspath(vmd_path))
+        file_name = os.path.basename(vmd_path).split('.')[0]
+        output_file = f'{output_path}/{file_name}.{out_type}'
+    elif output_path.lower().endswith(f'.{out_type}'):
+        output_file = output_path
+    else:
+        file_name = os.path.basename(vmd_path).split('.')[0]
+        output_file = f'{output_path}/{file_name}.{out_type}'
         
-    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-    
-    file_name = os.path.basename(vmd_path).split('.')[0]
-    output_file = f'{output_path}/{file_name}.{out_type}'
+    os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
     counter = 1
     while os.path.exists(output_file):
         output_file = f'{output_path}/{file_name}_{counter}.{out_type}'
