@@ -373,6 +373,21 @@ def write_vmd(file_path, animation_dict, model_name="MotionOutput"):
         print(f"Error writing VMD: {e}")
         return False
 
+def merge_camera_motion(anim, camera_vmd_path):
+    """
+    Load camera motion from a separate VMD file and merge it into the animation dict.
+    """
+    if not camera_vmd_path or not os.path.exists(camera_vmd_path):
+        return anim
+        
+    success, cam_anim = parse_vmd(camera_vmd_path, unit=anim.get('unit', 0.085))
+    if success and cam_anim.get('camera_frames'):
+        anim['camera_frames'] = cam_anim['camera_frames']
+        if cam_anim['duration'] > anim['duration']:
+            anim['duration'] = cam_anim['duration']
+            
+    return anim
+
 def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mode='local', verbose=True, leg_ik=False):
     """
     Process VMD and return combined character and camera data.
@@ -383,6 +398,9 @@ def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mo
     success, anim = parse_vmd(file_path, unit=unit, fps=fps)
     if not success:
         return None
+        
+    if camera_vmd_path:
+        anim = merge_camera_motion(anim, camera_vmd_path)
     
     load_vmd_to_skeleton(anim, all_bones)
     verify_global_positions(root)
@@ -396,10 +414,6 @@ def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mo
     
     # Handle camera frames (from separate file or original file)
     camera_frames = anim["camera_frames"]
-    if camera_vmd_path and os.path.exists(camera_vmd_path):
-        c_success, c_anim = parse_vmd(camera_vmd_path, unit=unit, fps=fps)
-        if c_success and c_anim["camera_frames"]:
-             camera_frames = c_anim["camera_frames"]
     
     # Sort camera frames once
     camera_frames.sort(key=lambda x: x["frame_num"])
