@@ -108,13 +108,33 @@ def export_vmd_to_files(vmd_path, output_dir, leg_ik=False, camera_vmd_path=None
     
     return True
 
-def load_motion_dict(input_path, mode='actor', leg_ik=False):
+def merge_camera_motion(anim, camera_vmd_path):
+    """
+    Load camera motion from a separate VMD file and merge it into the animation dict.
+    """
+    if not camera_vmd_path or not os.path.exists(camera_vmd_path):
+        return anim
+        
+    from .vmd import parse_vmd
+    success, cam_anim = parse_vmd(camera_vmd_path, unit=anim.get('unit', 0.085))
+    if success and cam_anim.get('camera_frames'):
+        anim['camera_frames'] = cam_anim['camera_frames']
+        if cam_anim['duration'] > anim['duration']:
+            anim['duration'] = cam_anim['duration']
+            
+    return anim
+
+def load_motion_dict(input_path, mode='actor', leg_ik=False, camera_vmd_path=None):
     ext = os.path.splitext(input_path)[1].lower()
     
     if ext == '.vmd':
         from .vmd import parse_vmd
         success, anim = parse_vmd(input_path, unit=0.085) 
         if not success: return None
+        
+        if camera_vmd_path:
+            anim = merge_camera_motion(anim, camera_vmd_path)
+            
         return anim
 
     from .skeleton import build_standard_skeleton

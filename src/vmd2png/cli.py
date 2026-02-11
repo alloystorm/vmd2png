@@ -14,6 +14,7 @@ def main():
     parser_preview.add_argument("--mode", choices=['actor', 'camera'], default='actor', help="Preview mode")
     parser_preview.add_argument("--fps", type=int, default=30, help="Playback FPS")
     parser_preview.add_argument("--ik", action="store_true", help="Use leg IK")
+    parser_preview.add_argument("--camera-motion", help="Path to camera VMD file to overlay")
     
     # Convert Command
     parser_convert = subparsers.add_parser("convert", help="Convert between VMD and PNG/NPY")
@@ -30,7 +31,7 @@ def main():
         if not os.path.exists(args.path):
             print(f"Error: File not found: {args.path}")
             sys.exit(1)
-        preview_motion(args.path, mode=args.mode, fps=args.fps)
+        preview_motion(args.path, mode=args.mode, fps=args.fps, camera_vmd_path=args.camera_motion)
         
     elif args.command == "convert":
         if not os.path.exists(args.input):
