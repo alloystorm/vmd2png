@@ -108,7 +108,7 @@ def export_vmd_to_files(vmd_path, output_dir, leg_ik=False, camera_vmd_path=None
     
     return True
 
-def load_motion_dict(input_path, mode='actor', leg_ik=False, camera_vmd_path=None):
+def load_motion_dict(input_path, leg_ik=False, camera_vmd_path=None):
     ext = os.path.splitext(input_path)[1].lower()
     
     if ext == '.vmd':
@@ -127,11 +127,7 @@ def load_motion_dict(input_path, mode='actor', leg_ik=False, camera_vmd_path=Non
     stride_actor = 4 + len(actor_bones_list) * 4
     stride_cam = 8
     
-    stride = stride_actor
-    if mode == 'camera':
-        stride = stride_cam
-    elif mode == 'combined':
-        stride = stride_actor + stride_cam
+    stride = stride_actor + stride_cam
 
     data = None
     if ext == '.npy':
@@ -153,55 +149,54 @@ def load_motion_dict(input_path, mode='actor', leg_ik=False, camera_vmd_path=Non
     bone_frames = []
     camera_frames = []
     
-    if mode in ['camera', 'combined']:
-        cam_data = data if mode == 'camera' else data[:, stride_actor:]
-        for i in range(len(cam_data)):
-            row = cam_data[i]
-            
-            pos = row[0:3] * 32768 / 1000
-            fov = row[3] * 180
-            rot = row[4:8]
-            
-            if fov < 0.01: break
-            
-            camera_frames.append({
-                "frame_num": i,
-                "position": tuple(pos),
-                "rotation": rot, 
-                "dist": 0.0, 
-                "fov": int(fov),
-                "bezier": bytearray([20]*24),
-                "is_perspective": 0
-            })
-            
-    if mode in ['actor', 'combined']:
-        actor_data = data if mode == 'actor' else data[:, :stride_actor]
+    
+    cam_data = data[:, stride_actor:]
+    for i in range(len(cam_data)):
+        row = cam_data[i]
         
-        for i in range(len(actor_data)):
-            row = actor_data[i]
-            if row[3] < 0.01: break
+        pos = row[0:3] * 32768 / 1000
+        fov = row[3] * 180
+        rot = row[4:8]
+        
+        if fov < 0.01: break
+        
+        camera_frames.append({
+            "frame_num": i,
+            "position": tuple(pos),
+            "rotation": rot, 
+            "dist": 0.0, 
+            "fov": int(fov),
+            "bezier": bytearray([20]*24),
+            "is_perspective": 0
+        })
             
-            center_pos = row[0:3]
+    actor_data = data[:, :stride_actor]
+    
+    for i in range(len(actor_data)):
+        row = actor_data[i]
+        if row[3] < 0.01: break
+        
+        center_pos = row[0:3]
+        
+        for j, bone in enumerate(actor_bones_list):
+            idx = 4 + j * 4
+            if idx+4 > len(row): break
+            quat = row[idx:idx+4]
             
-            for j, bone in enumerate(actor_bones_list):
-                idx = 4 + j * 4
-                if idx+4 > len(row): break
-                quat = row[idx:idx+4]
-                
-                if np.all(quat == 0): quat = np.array([0,0,0,1])
+            if np.all(quat == 0): quat = np.array([0,0,0,1])
 
-                pos = (0,0,0)
-                if bone.name == "Center":
-                    pos = tuple(center_pos * 32768 / 1000)
-                
-                frame = {
-                    "name": bone.name,
-                    "frame_num": i,
-                    "position": pos,
-                    "rotation": tuple(quat),
-                    "bezier": bytearray([20]*64)
-                }
-                bone_frames.append(frame)
+            pos = (0,0,0)
+            if bone.name == "Center":
+                pos = tuple(center_pos * 32768 / 1000)
+            
+            frame = {
+                "name": bone.name,
+                "frame_num": i,
+                "position": pos,
+                "rotation": tuple(quat),
+                "bezier": bytearray([20]*64)
+            }
+            bone_frames.append(frame)
         
     bones_dict = {}
     for f in bone_frames:
@@ -220,8 +215,8 @@ def load_motion_dict(input_path, mode='actor', leg_ik=False, camera_vmd_path=Non
 
     return anim
 
-def convert_motion_to_vmd(input_path, output_vmd_path, mode='actor'):
-    anim = load_motion_dict(input_path, mode)
+def convert_motion_to_vmd(input_path, output_vmd_path):
+    anim = load_motion_dict(input_path)
     if not anim:
         return False, anim
     return write_vmd(output_vmd_path, anim), anim

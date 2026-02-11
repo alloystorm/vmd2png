@@ -74,11 +74,11 @@ def plot_skeleton_3d(root, ax):
     # Draw logic
     collect_bones(root, None)
 
-def preview_motion(input_path, mode='actor', fps=30, leg_ik=False, camera_vmd_path=None):
+def preview_motion(input_path, fps=30, leg_ik=False, camera_vmd_path=None):
     """
     Preview motion from VMD, NPY, or PNG file.
     """
-    anim = load_motion_dict(input_path, mode, leg_ik, camera_vmd_path=camera_vmd_path)
+    anim = load_motion_dict(input_path, leg_ik=leg_ik, camera_vmd_path=camera_vmd_path)
     if not anim:
         print("Failed to load animation.")
         return

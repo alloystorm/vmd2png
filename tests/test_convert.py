@@ -10,6 +10,6 @@ from vmd2png.converter import export_vmd_to_files, convert_motion_to_vmd, load_m
 from vmd2png.preview import preview_motion
 
 # export_vmd_to_files("data/conqueror.vmd", "test_output/conqueror", leg_ik=False, camera_vmd_path="data/conqueror_cam.vmd")
-# preview_motion("test_output/conqueror/conqueror_with_cam_motion.png", mode='combined', leg_ik=False)
-preview_motion("data/conqueror.vmd", camera_vmd_path="data/conqueror_cam.vmd", mode='combined', leg_ik=False)
+# preview_motion("test_output/conqueror/conqueror_with_cam_motion.png", leg_ik=False)
+preview_motion("data/conqueror.vmd", camera_vmd_path="data/conqueror_cam.vmd", leg_ik=False)
 #preview_motion("data/conqueror.vmd", leg_ik=False)
