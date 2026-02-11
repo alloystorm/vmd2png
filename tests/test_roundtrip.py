@@ -122,13 +122,13 @@ def test_pipeline():
     success = export_vmd_to_files(vmd_path, files_dir)
     assert success, "Failed to export files"
     
-    exp_motion_png = os.path.join(files_dir, "test_motion.png")
+    exp_motion_png = os.path.join(files_dir, "test.png")
     assert os.path.exists(exp_motion_png), "Motion PNG missing"
     print("   Export successful.")
     
     # 4. Load from PNG and Convert back
     print("4. Importing from PNG and converting back to VMD...")
-    back_vmd = os.path.join(output_dir, "back_motion.vmd")
+    back_vmd = os.path.join(output_dir, "back.vmd")
     
     success, parsed_anim = convert_motion_to_vmd(exp_motion_png, back_vmd)
     assert success, "Failed to convert motion PNG to VMD"

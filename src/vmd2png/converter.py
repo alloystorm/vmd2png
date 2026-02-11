@@ -91,7 +91,7 @@ def load_from_png_16bit(file_path, min_val, max_val, stride=None):
     
     return uint16_to_float(flat_data, min_val, max_val)
 
-def export_vmd_to_files(vmd_path, output_path, out_type='png', leg_ik=False, camera_vmd_path=None):
+def export_vmd_to_files(vmd_path, output_path=None, out_type='png', leg_ik=False, camera_vmd_path=None):
     if out_type == 'vmd':
         anim = load_motion_dict(vmd_path, leg_ik=leg_ik, camera_vmd_path=camera_vmd_path)
         if not anim: return False
@@ -101,14 +101,22 @@ def export_vmd_to_files(vmd_path, output_path, out_type='png', leg_ik=False, cam
     if results is None:
         print(f"Failed to extract info from {vmd_path}")
         return False
+    
+    if output_path is None:
+        output_path = os.path.dirname(os.path.abspath(vmd_path))
         
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     
+    file_name = os.path.basename(vmd_path).split('.')[0]
+    output_file = f'{output_path}/{file_name}.{out_type}'
+    counter = 1
+    while os.path.exists(output_file):
+        output_file = f'{output_path}/{file_name}_{counter}.{out_type}'
+        counter += 1
     if out_type == 'npy':
-        np.save(output_path, results)
+        np.save(output_file, results)
     else:
-        save_as_png_16bit(results, output_path, -1, 1)
-    
+        save_as_png_16bit(results, output_file, -1, 1)
     return True
 
 def load_motion_dict(input_path, leg_ik=False, camera_vmd_path=None):
