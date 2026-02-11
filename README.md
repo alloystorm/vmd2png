@@ -48,4 +48,17 @@ Convert PNG/NPY back to VMD:
 vmd2png convert path/to/file.png -t vmd
 ```
 
-## Python Usage
+## Caveats
+- The tool expects the standard MMD bone structure. Please see [skeleton.py](src/vmd2png/skeleton.py) for details. Any custom bone motions will be lost after conversion.
+- All facial expressions and morphs will be lost after conversion, as they are not supported in the PNG/NPY format yet.
+- We use 16-bit PNG format to achieve necessary precision for motion data. If you edit the image and save as 8-bit, the motion data will be corrupted. 
+- The motion is stored frame by frame for every frame in the PNG/NPY format. When you convert PNG/NPY back to VMD, the original keyframe information will be lost, and the file size will be larger than the original.
+
+
+## What's Next
+- BVH support for motion capture data.
+- Support for standard facial morphs.
+
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
