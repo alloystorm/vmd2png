@@ -308,7 +308,7 @@ def write_vmd(file_path, animation_dict, model_name="MotionOutput"):
                 f.write(struct.pack("<15s I 3f 4f 64s", 
                                   name_bytes[:15].ljust(15, b'\x00'),
                                   frame_num,
-                                  px / unit, py / unit, pz / unit,
+                                  -px / unit, py / unit, -pz / unit,
                                   rx, ry, rz, rw,
                                   bytes(bezier)))
                                   
@@ -355,7 +355,7 @@ def write_vmd(file_path, animation_dict, model_name="MotionOutput"):
                 f.write(struct.pack("<I f 3f 3f 24s I B",
                                   frame_num,
                                   dist,
-                                  px / unit, py / unit, pz / unit,
+                                  -px / unit, py / unit, -pz / unit,
                                   rx, ry, rz,
                                   bytes(bezier),
                                   fov,
