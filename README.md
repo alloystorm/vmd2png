@@ -5,10 +5,11 @@ A Python utility library for processing MikuMikuDance (MMD) VMD motion files.
 ## Features
 
 - **Parse VMD**: Read VMD files and extract bone and camera motion data.
-- **Export**: detailed motion data export to `.npy` and 16-bit PNG formats.
-- **Convert**: Import `.npy` or `.png` data back to VMD format.
-- **Preview**: Visualize motion data.
-- **Standalone**: decoupled from the main motion encoder project.
+- **PNG Format**: Represent motion data in 16-bit PNG format for both visualization and storage.
+- **NPY Format**: Store motion data in NumPy's `.npy` format for easy manipulation in Python and AI training.
+- **Convert**: Convert between VMD, PNG, and NPY formats.
+- **Merge**: Combine separate Actor and Camera VMD files into a single VMD.
+- **Preview**: Visualize actor and camera motion without any additional software.
 
 ## Installation
 
