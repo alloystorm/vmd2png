@@ -24,18 +24,27 @@ The package provides a `vmd2png` command line tool.
 Preview a VMD, PNG, or NPY file in 3D:
 ```bash
 vmd2png preview path/to/motion.vmd
-vmd2png preview path/to/motion.png --mode character
+# With leg IK enabled
+vmd2png preview path/to/motion.vmd --ik
+# With separate camera motion overlay
+vmd2png preview path/to/actor.vmd --camera path/to/camera.vmd
 ```
 
 ### Convert
 Convert VMD to extracted files (PNG/NPY):
 ```bash
-vmd2png convert path/to/file.vmd -o output_dir
+vmd2png convert path/to/file.vmd -t png
+vmd2png convert path/to/file.vmd -t npy
+```
+
+Merge Actor and Camera VMDs:
+```bash
+vmd2png convert actor.vmd --camera camera.vmd -o combined.vmd -t vmd
 ```
 
 Convert PNG/NPY back to VMD:
 ```bash
-vmd2png convert path/to/file.png -o output.vmd --mode character
+vmd2png convert path/to/file.png -t vmd
 ```
 
 ## Python Usage
