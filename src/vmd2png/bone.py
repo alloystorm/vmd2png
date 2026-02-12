@@ -39,7 +39,7 @@ class Bone:
         self.globalPos = np.zeros(3, dtype=float)
         self.globalQuat = np.array([0.0, 0.0, 0.0, 1.0])  # Global rotation as quaternion
         self.parent = None
-        self.translatable = name in ("Master", "センター", "Center", "LeftLegIK", "RightLegIK", "RightLegIKParent", "LeftLegIKParent")
+        self.translatable = name in ("Master", "Center", "Groove", "Waist", "LeftLegIK", "RightLegIK", "RightLegIKParent", "LeftLegIKParent")
 
     def set_parent(self, parent):
         self.parent = parent

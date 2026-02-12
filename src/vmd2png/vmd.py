@@ -37,12 +37,14 @@ bone_name_translation = {
     "右足首": "RightAnkle",
     "左つま先": "LeftToe",
     "右つま先": "RightToe",
-    "左親指１": "LeftThumb0",
-    "左親指２": "LeftThumb1",
-    "左親指３": "LeftThumb2",
-    "右親指１": "RightThumb0",
-    "右親指２": "RightThumb1",
-    "右親指３": "RightThumb2",
+    "左親指０": "LeftThumb0",
+    "左親指１": "LeftThumb1",
+    "左親指２": "LeftThumb2",
+    "左親指３": "LeftThumb3",
+    "右親指０": "RightThumb0",
+    "右親指１": "RightThumb1",
+    "右親指２": "RightThumb2",
+    "右親指３": "RightThumb3",
     "左人指１": "LeftIndexFinger1",
     "左人指２": "LeftIndexFinger2",
     "左人指３": "LeftIndexFinger3",
@@ -67,6 +69,10 @@ bone_name_translation = {
     "右小指１": "RightPinky1",
     "右小指２": "RightPinky2",
     "右小指３": "RightPinky3",
+    "左足ＩＫ": "LeftLegIK",
+    "右足ＩＫ": "RightLegIK",
+    "左つま先ＩＫ": "LeftLegIKParent",
+    "右つま先ＩＫ": "RightLegIKParent",
 }
 
 # Reverse translation (English to Japanese) for writing VMD
@@ -199,6 +205,8 @@ def parse_vmd(file_path, unit=0.085, fps=30.0):
                     "bezier": bezier,
                 })
 
+            for bone_name, frames in bones.items():
+                print(f"Bone '{bone_name}': {len(frames)} frames, frame range 0-{max(f['frame_num'] for f in frames)}")
             num_morph_frames = struct.unpack("<I", f.read(4))[0]
             morph_frames = []
             morphs = defaultdict(list)
@@ -393,7 +401,7 @@ def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mo
     Process VMD and return combined character and camera data.
     """
     root, all_bones = build_standard_skeleton()
-    center = root.find("Center")
+    center = root.find("Waist")
     
     success, anim = parse_vmd(file_path, unit=unit, fps=fps)
     if not success:
