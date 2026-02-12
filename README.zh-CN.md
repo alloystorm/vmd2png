@@ -1,8 +1,8 @@
 ## vmd2png 简介（中文）
 
-vmd2png 是一个用于处理 MikuMikuDance（MMD）VMD 动作文件的 Python 实用库。
+vmd2png 是一个用于处理 MikuMikuDance（MMD）VMD 动作文件的 Python 实用库。功能包括将 VMD 动作数据转换为 PNG 图像或 NPY 数组格式，并内置 3D 预览功能。
 
-## 图像格式中的动作数据？
+## 用图片存储动作数据？
 
 ![](examples/conqueror.png)
 

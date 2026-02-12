@@ -1,6 +1,6 @@
 ## vmd2png 概要（日本語）
 
-vmd2png は、MikuMikuDance（MMD）の VMD モーションファイルを処理するための Python 製ユーティリティライブラリです。
+vmd2png は、MikuMikuDance（MMD）の VMD モーションファイルを処理するための Python 製ユーティリティライブラリです。VMD モーションデータを PNG 画像や NPY 配列形式でエクスポートする機能を提供し、内蔵のビューワーでモーションを 3D プレビューすることもできます。
 
 ## 画像形式でのモーション？
 
