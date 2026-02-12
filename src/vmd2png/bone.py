@@ -143,6 +143,7 @@ class Bone:
             self.set_quat(prev_frame["rotation"])
             if self.translatable:
                 self.pos = np.array(prev_frame["position"])
+                #print(f"Bone {self.name} position set to {self.pos} at frame {frame_num}")
         else:
             t = (frame_num - prev_frame["frame_num"]) / (next_frame["frame_num"] - prev_frame["frame_num"])
             
@@ -156,7 +157,7 @@ class Bone:
                 prev_pos = np.array(prev_frame["position"])
                 next_pos = np.array(next_frame["position"])
                 self.pos = prev_pos + t * (next_pos - prev_pos)
-
+                #print(f"Bone {self.name} position set to {self.pos} at frame {frame_num}")
     def set_quat(self, quat):
         """
         Set the bone's quaternion, flipping sign if necessary for compatibility.

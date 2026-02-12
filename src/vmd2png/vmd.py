@@ -191,7 +191,7 @@ def parse_vmd(file_path, unit=0.085, fps=30.0):
                 
                 frame_data = {
                     "frame_num": frame_num,
-                    "position": (-px * unit, py * unit, -pz * unit),
+                    "position": (px * unit, py * unit, pz * unit),
                     "rotation": (rx, ry, rz, rw),
                     "bezier": bezier,
                 }
@@ -200,7 +200,7 @@ def parse_vmd(file_path, unit=0.085, fps=30.0):
                 bone_frames.append({
                     "name": name,
                     "frame_num": frame_num,
-                    "position": (-px * unit, py * unit, -pz * unit),
+                    "position": (px * unit, py * unit, pz * unit),
                     "rotation": (rx, ry, rz, rw),
                     "bezier": bezier,
                 })
@@ -241,7 +241,7 @@ def parse_vmd(file_path, unit=0.085, fps=30.0):
                 rot = R.from_euler('xyz', [rx_deg, ry_deg, rz_deg], degrees=True)
                 camera_frames.append({
                     "frame_num": frame_num,
-                    "position": (-px * unit, py * unit, -pz * unit),
+                    "position": (px * unit, py * unit, pz * unit),
                     "rotation": rot.as_quat(),
                     "dist": dist * unit,
                     "fov": fov,
@@ -316,7 +316,7 @@ def write_vmd(file_path, animation_dict, model_name="MotionOutput"):
                 f.write(struct.pack("<15s I 3f 4f 64s", 
                                   name_bytes[:15].ljust(15, b'\x00'),
                                   frame_num,
-                                  -px / unit, py / unit, -pz / unit,
+                                  px / unit, py / unit, pz / unit,
                                   rx, ry, rz, rw,
                                   bytes(bezier)))
                                   
@@ -363,7 +363,7 @@ def write_vmd(file_path, animation_dict, model_name="MotionOutput"):
                 f.write(struct.pack("<I f 3f 3f 24s I B",
                                   frame_num,
                                   dist / unit,
-                                  -px / unit, py / unit, -pz / unit,
+                                  px / unit, py / unit, pz / unit,
                                   rx, ry, rz,
                                   bytes(bezier),
                                   fov,

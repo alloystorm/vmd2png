@@ -119,7 +119,7 @@ def preview_motion(input_path, fps=30, leg_ik=False, camera_vmd_path=None):
         
         # Animate Skeleton
         animate_skeleton(root, frame, leg_ik)
-        center.update_world_pos() # Ensure global positions are updated
+        root.update_world_pos() # Ensure global positions are updated
         
         # Animate Camera
         camera.update(frame)
