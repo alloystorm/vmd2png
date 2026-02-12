@@ -401,7 +401,7 @@ def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mo
     Process VMD and return combined character and camera data.
     """
     root, all_bones = build_standard_skeleton()
-    center = root.find("Center")
+    center = root.find("Waist")
     
     success, anim = parse_vmd(file_path, unit=unit, fps=fps)
     if not success:
@@ -432,7 +432,7 @@ def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mo
 
     for frame in range(totalFrames):
         animate_skeleton(root, frame, leg_ik)
-        center.update_world_pos()
+        root.update_world_pos()
 
         # Character
         centerPos = center.globalPos.copy() - center.zeroPos
