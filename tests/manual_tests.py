@@ -14,5 +14,5 @@ from vmd2png.preview import preview_motion
 #preview_motion("test_output/reconstructed.vmd", leg_ik=False)
 # preview_motion("test_output/conqueror/conqueror_with_cam_motion.png", leg_ik=False)
 # preview_motion("data/conqueror.vmd", camera_vmd_path="data/conqueror_cam.vmd", leg_ik=False)
-# preview_motion("data/kimagure.vmd", leg_ik=True)
-preview_motion("data/conqueror.vmd", camera_vmd_path="data/conqueror_cam.vmd")
+preview_motion("data/kimagure.vmd", leg_ik=True)
+# preview_motion("data/conqueror.vmd", camera_vmd_path="data/conqueror_cam.vmd")

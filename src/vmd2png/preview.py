@@ -107,7 +107,7 @@ def preview_motion(input_path, fps=30, leg_ik=False, camera_vmd_path=None):
     plt.subplots_adjust(bottom=0.25) # Make room for the slider
     
     center = root.find("Center")
-
+    waist = root.find("Waist")
     # Animation state
     anim_state = {
         'frame': 0,
@@ -131,9 +131,9 @@ def preview_motion(input_path, fps=30, leg_ik=False, camera_vmd_path=None):
         draw_camera_frustum(ax, camera, scale=2.0)
         
         # Plot coordinates: x=X, y=Z(Depth), z=Y(Height)
-        radius = np.linalg.norm(camera.global_pos - center.globalPos)
+        pc = waist.globalPos
+        radius = np.linalg.norm(camera.global_pos - pc)
         radius = max(radius, 1.0) # Avoid too close zoom
-        pc = center.globalPos
         
         ax.set_xlim(pc[0] - radius, pc[0] + radius)
         ax.set_zlim(0, radius * 2)
