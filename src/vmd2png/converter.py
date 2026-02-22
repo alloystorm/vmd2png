@@ -32,7 +32,7 @@ def save_as_png_16bit(data, output_path, min_val=-1, max_val=1):
     # Reshape data to (frames, rows_per_frame, 4)
     data_reshaped = data.reshape(frames, rows_per_frame, 4)
     
-    max_width = 1800 
+    max_width = 1024 
     
     if frames <= max_width:
         img_data_float = data_reshaped.transpose(1, 0, 2)
@@ -97,7 +97,7 @@ def export_vmd_to_files(vmd_path, output_path=None, out_type='png', leg_ik=False
         if not anim: return False
         return write_vmd(output_path, anim)
 
-    results = vmd_to_motion_data(vmd_path, camera_vmd_path=camera_vmd_path, verbose=False, leg_ik=leg_ik)
+    results = vmd_to_motion_data(vmd_path, camera_vmd_path=camera_vmd_path, verbose=True, leg_ik=leg_ik)
     if results is None:
         print(f"Failed to extract info from {vmd_path}")
         return False

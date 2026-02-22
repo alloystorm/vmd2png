@@ -146,7 +146,7 @@ class Camera:
         self.current_fov = fov
         self.distance = dist
 
-def parse_vmd(file_path, unit=0.085, fps=30.0):
+def parse_vmd(file_path, unit=0.085, fps=30.0, verbose=False):
     """
     Parse a VMD file and return an animation dictionary.
     """
@@ -205,8 +205,11 @@ def parse_vmd(file_path, unit=0.085, fps=30.0):
                     "bezier": bezier,
                 })
 
-            for bone_name, frames in bones.items():
-                print(f"Bone '{bone_name}': {len(frames)} frames, frame range 0-{max(f['frame_num'] for f in frames)}")
+            if verbose:
+                print(f"Parsed {num_frames} bone frames for {len(bones)} bones:")
+                for bone_name, frames in bones.items():
+                    print(f"Bone '{bone_name}': {len(frames)} frames, frame range 0-{max(f['frame_num'] for f in frames)}")
+
             num_morph_frames = struct.unpack("<I", f.read(4))[0]
             morph_frames = []
             morphs = defaultdict(list)
@@ -442,7 +445,7 @@ def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mo
         frame_data.extend(centerPos * 1000 / 32768)
         frame_data.append(1.0)
         frame_data.extend(root.export_data(mode=mode))
-        
+
         # Camera
         if has_camera:
             camera.update(frame)
@@ -456,6 +459,9 @@ def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mo
             frame_data.extend([0,0.03,0.1])
             frame_data.append(30.0 / 180)
             frame_data.extend([0,0,0,1])
+        
+        if verbose and frame == 0:
+            print(f"Data length: {len(frame_data)}")
         
         combined_data.append(frame_data)
         
