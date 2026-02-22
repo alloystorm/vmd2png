@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vmd2png"
-version = "0.1.0"
+version = "0.1.1"
 description = "Utilities for VMD motion files: parsing, conversion, and preview"
 authors = [
   { name="Alloystorm", email="alloystorm@gmail.com" },
