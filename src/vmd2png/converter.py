@@ -180,7 +180,7 @@ def load_motion_dict(input_path, leg_ik=False, camera_vmd_path=None):
             "position": tuple(pos),
             "rotation": rot, 
             "dist": 0.0, 
-            "fov": int(fov),
+            "fov": fov,
             "bezier": bytearray([20]*24),
             "is_perspective": 0
         })
