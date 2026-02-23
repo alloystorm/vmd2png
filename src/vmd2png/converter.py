@@ -55,6 +55,33 @@ def add_png_metadata(filepath, metadata):
     with open(filepath, 'wb') as f:
         f.write(new_data)
 
+def read_png_metadata(filepath):
+    metadata = {}
+    with open(filepath, 'rb') as f:
+        data = f.read()
+
+    offset = 8
+    while offset < len(data):
+        length = struct.unpack('>I', data[offset:offset+4])[0]
+        chunk_type = data[offset+4:offset+8]
+        chunk_data = data[offset+8:offset+8+length]
+        offset += 12 + length
+
+        if chunk_type == b'iTXt':
+            null_idx1 = chunk_data.find(b'\x00')
+            keyword = chunk_data[:null_idx1].decode('utf-8')
+            
+            # Skip null separator, compression flag, compression method, 
+            # language tag (null terminated), translated keyword (null terminated)
+            text_start = null_idx1 + 1 + 2
+            null_idx2 = chunk_data.find(b'\x00', text_start)
+            null_idx3 = chunk_data.find(b'\x00', null_idx2 + 1)
+            
+            text = chunk_data[null_idx3 + 1:].decode('utf-8')
+            metadata[keyword] = text
+
+    return metadata
+
 def save_as_png_16bit(data, output_path, min_val=-1, max_val=1, metadata=None):
     if data is None or data.size == 0:
         return
@@ -109,6 +136,10 @@ def load_from_png_16bit(file_path, min_val, max_val, stride=None):
     if img is None:
         raise ValueError(f"Failed to load image: {file_path}")
         
+    metadata = read_png_metadata(file_path)
+    expected_frames = int(metadata.get('TotalFrames', 0))
+    expected_rows = int(metadata.get('RowsPerFrame', 0))
+        
     if img.dtype != np.uint16:
         if img.dtype == np.uint8:
              img = (img.astype(np.float32) * 257).astype(np.uint16)
@@ -122,6 +153,10 @@ def load_from_png_16bit(file_path, min_val, max_val, stride=None):
         H, W = img.shape[:2]
         C = img.shape[2] if len(img.shape) > 2 else 1
         rows_per_frame = (stride + 3) // 4
+        
+        if expected_rows > 0 and rows_per_frame != expected_rows:
+            print(f"Warning: Calculated rows per frame ({rows_per_frame}) does not match metadata ({expected_rows})")
+            
         num_blocks = H // rows_per_frame
         
         valid_H = num_blocks * rows_per_frame
@@ -130,6 +165,12 @@ def load_from_png_16bit(file_path, min_val, max_val, stride=None):
         blocks = img.reshape(num_blocks, rows_per_frame, W, C)
         blocks = blocks.transpose(0, 2, 1, 3)
         frames_data = blocks.reshape(-1, rows_per_frame * C)
+        
+        if expected_frames > 0 and frames_data.shape[0] < expected_frames:
+            print(f"Warning: Extracted frames ({frames_data.shape[0]}) is less than expected frames ({expected_frames})")
+            
+        if expected_frames > 0 and frames_data.shape[0] > expected_frames:
+            frames_data = frames_data[:expected_frames, :]
         
         if frames_data.shape[1] > stride:
             frames_data = frames_data[:, :stride]
