@@ -126,6 +126,7 @@ def save_as_png_16bit(data, output_path, min_val=-1, max_val=1, metadata=None):
         if metadata is None:
             metadata = {}
         metadata['Version'] = '1.0'
+        metadata['Creator'] = 'vmd2png 0.1.2'
         metadata['TotalFrames'] = frames
         metadata['RowsPerFrame'] = rows_per_frame
         add_png_metadata(output_path, metadata)
