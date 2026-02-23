@@ -1,5 +1,7 @@
 import numpy as np
 import os
+import struct
+import zlib
 from PIL import Image
 from .vmd import vmd_to_motion_data, write_vmd
 from .skeleton import build_standard_skeleton
@@ -15,7 +17,45 @@ def uint16_to_float(data, min_val, max_val):
     norm = data.astype(np.float32) / 65535.0
     return norm * (max_val - min_val) + min_val
 
-def save_as_png_16bit(data, output_path, min_val=-1, max_val=1):
+def add_png_metadata(filepath, metadata):
+    if not metadata:
+        return
+        
+    with open(filepath, 'rb') as f:
+        data = f.read()
+
+    iend_idx = data.find(b'IEND')
+    if iend_idx == -1:
+        return
+        
+    iend_idx -= 4 
+    
+    chunks = b""
+    for key, value in metadata.items():
+        keyword = str(key).encode('utf-8')
+        text = str(value).encode('utf-8')
+        
+        chunk_data = (
+            keyword + b"\x00" + 
+            b"\x00\x00" + 
+            b"\x00" + 
+            b"\x00" + 
+            text
+        )
+        
+        chunk_type = b"iTXt"
+        chunk_length = struct.pack(">I", len(chunk_data))
+        crc = zlib.crc32(chunk_type + chunk_data) & 0xFFFFFFFF
+        chunk_crc = struct.pack(">I", crc)
+        
+        chunks += chunk_length + chunk_type + chunk_data + chunk_crc
+
+    new_data = data[:iend_idx] + chunks + data[iend_idx:]
+
+    with open(filepath, 'wb') as f:
+        f.write(new_data)
+
+def save_as_png_16bit(data, output_path, min_val=-1, max_val=1, metadata=None):
     if data is None or data.size == 0:
         return
     frames, dimension = data.shape
@@ -55,6 +95,12 @@ def save_as_png_16bit(data, output_path, min_val=-1, max_val=1):
     success = cv2.imwrite(output_path, img_data_uint16)
     if not success:
         print(f"Failed to write image to {output_path}")
+    else:
+        if metadata is None:
+            metadata = {}
+        metadata['TotalFrames'] = frames
+        metadata['RowsPerFrame'] = rows_per_frame
+        add_png_metadata(output_path, metadata)
 
 def load_from_png_16bit(file_path, min_val, max_val, stride=None):
     import cv2
@@ -120,7 +166,11 @@ def export_vmd_to_files(vmd_path, output_path=None, out_type='png', leg_ik=False
     if out_type == 'npy':
         np.save(output_file, results)
     else:
-        save_as_png_16bit(results, output_file, -1, 1)
+        root_skel, _ = build_standard_skeleton()
+        actor_bones_list = root_skel.export_bones()
+        bone_names = [bone.name for bone in actor_bones_list]
+        metadata = {'Bones': ','.join(bone_names)}
+        save_as_png_16bit(results, output_file, -1, 1, metadata=metadata)
     return True
 
 def load_motion_dict(input_path, leg_ik=False, camera_vmd_path=None):
