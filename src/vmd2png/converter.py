@@ -34,7 +34,7 @@ def add_png_metadata(filepath, metadata):
     for key, value in metadata.items():
         keyword = str(key).encode('utf-8')
         text = str(value).encode('utf-8')
-        
+        print(f"Adding metadata: {key} = {value}")
         chunk_data = (
             keyword + b"\x00" + 
             b"\x00\x00" + 
@@ -98,6 +98,7 @@ def save_as_png_16bit(data, output_path, min_val=-1, max_val=1, metadata=None):
     else:
         if metadata is None:
             metadata = {}
+        metadata['Version'] = '1.0'
         metadata['TotalFrames'] = frames
         metadata['RowsPerFrame'] = rows_per_frame
         add_png_metadata(output_path, metadata)

@@ -1,6 +1,11 @@
 import os
 from PIL import Image
-from src.vmd2png.converter import export_vmd_to_files
+import sys
+
+# Add src to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
+
+from vmd2png.converter import export_vmd_to_files
 
 def main():
     vmd_path = "data/conqueror.vmd"
