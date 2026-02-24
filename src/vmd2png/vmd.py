@@ -456,7 +456,7 @@ def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mo
             frame_data.append(float(camera.current_fov) / 180)
             frame_data.extend(camera.global_rot)
         else:
-            frame_data.extend([0,0.03,0.1])
+            frame_data.extend([0,0.03,-0.1])
             frame_data.append(30.0 / 180)
             frame_data.extend([0,0,0,1])
         
