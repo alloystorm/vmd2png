@@ -328,3 +328,63 @@ def convert_motion_to_vmd(input_path, output_vmd_path):
     if not anim:
         return False, anim
     return write_vmd(output_vmd_path, anim), anim
+
+
+def plot_ankle_heights(vmd_path, output_path, fps=30.0):
+    """
+    Plot the vertical (Y) world position of LeftAnkle and RightAnkle over all frames
+    and save the result as an image.
+
+    Args:
+        vmd_path: Path to the input VMD file.
+        output_path: Path to save the output plot image.
+        fps: Frames per second used to determine total frame count.
+
+    Returns:
+        True on success, False on failure.
+    """
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from .vmd import parse_vmd, load_vmd_to_skeleton, animate_skeleton
+
+    success, anim = parse_vmd(vmd_path, unit=0.085, fps=fps)
+    if not success:
+        print(f"Failed to parse VMD file: {vmd_path}")
+        return False
+
+    root, all_bones = build_standard_skeleton()
+    load_vmd_to_skeleton(anim, all_bones)
+
+    left_ankle = root.find("LeftAnkle")
+    right_ankle = root.find("RightAnkle")
+    if left_ankle is None or right_ankle is None:
+        print("Could not find LeftAnkle or RightAnkle in skeleton.")
+        return False
+
+    total_frames = int(anim["duration"] * fps) + 1
+    frames = list(range(total_frames))
+    left_y = []
+    right_y = []
+
+    for frame in frames:
+        animate_skeleton(root, frame, leg_ik=False)
+        root.update_world_pos()
+        left_y.append(left_ankle.globalPos[1])
+        right_y.append(right_ankle.globalPos[1])
+
+    fig, ax = plt.subplots(figsize=(max(8, total_frames / 60), 4))
+    ax.plot(frames, left_y, label="LeftAnkle", color="steelblue", linewidth=1.0)
+    ax.plot(frames, right_y, label="RightAnkle", color="tomato", linewidth=1.0)
+    ax.set_xlim(0, total_frames - 1)
+    ax.set_ylim(-0.2, 0.2)
+    ax.set_xlabel("Frame")
+    ax.set_ylabel("Height (m)")
+    ax.set_title(f"Ankle Vertical Position — {os.path.basename(vmd_path)}")
+    ax.legend()
+    ax.grid(True, linestyle='--', alpha=0.5)
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+    fig.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    return True

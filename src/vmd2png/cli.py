@@ -2,7 +2,7 @@ import argparse
 import sys
 import os
 from .preview import preview_motion
-from .converter import export_vmd_to_files, convert_motion_to_vmd
+from .converter import export_vmd_to_files, convert_motion_to_vmd, plot_ankle_heights
 
 def main():
     parser = argparse.ArgumentParser(description="vmd2png: VMD motion utility")
@@ -21,6 +21,12 @@ def main():
     parser_convert.add_argument("--camera", help="Path of camera VMD file to be merged (for VMD input)")
     parser_convert.add_argument("-o", "--output", help="Output path or directory")
     parser_convert.add_argument("-t", "--type", choices=['png', 'npy', 'vmd'], default='png', help="Output format type")
+
+    # Plot Command
+    parser_plot = subparsers.add_parser("plot", help="Plot ankle vertical positions over time")
+    parser_plot.add_argument("input", help="Path to VMD file")
+    parser_plot.add_argument("-o", "--output", help="Output image path (default: <input_name>_ankles.png)")
+    parser_plot.add_argument("--fps", type=float, default=30.0, help="Frames per second")
     
     args = parser.parse_args()
     
@@ -63,7 +69,25 @@ def main():
         else:
             print("Conversion failed.")
             sys.exit(1)
-            
+
+    elif args.command == "plot":
+        if not os.path.exists(args.input):
+            print(f"Error: Input file not found: {args.input}")
+            sys.exit(1)
+
+        output_path = args.output
+        if not output_path:
+            base = os.path.splitext(os.path.basename(args.input))[0]
+            output_path = os.path.join(os.path.dirname(args.input) or '.', f"{base}_ankles.png")
+
+        print(f"Plotting ankle heights for {args.input} → {output_path} ...")
+        success = plot_ankle_heights(args.input, output_path, fps=args.fps)
+        if success:
+            print("Done.")
+        else:
+            print("Plot failed.")
+            sys.exit(1)
+
     else:
         parser.print_help()
 
