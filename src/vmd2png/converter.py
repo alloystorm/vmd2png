@@ -332,8 +332,8 @@ def convert_motion_to_vmd(input_path, output_vmd_path):
 
 def plot_ankle_heights(vmd_path, output_path, fps=30.0):
     """
-    Plot the vertical (Y) world position of LeftAnkle and RightAnkle over all frames
-    and save the result as an image.
+    Plot the vertical (Y) world position of LeftAnkle, RightAnkle, and the
+    midpoint between them over all frames, split into 900-frame segments.
 
     Args:
         vmd_path: Path to the input VMD file.
@@ -343,6 +343,7 @@ def plot_ankle_heights(vmd_path, output_path, fps=30.0):
     Returns:
         True on success, False on failure.
     """
+    import math
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -358,32 +359,60 @@ def plot_ankle_heights(vmd_path, output_path, fps=30.0):
 
     left_ankle = root.find("LeftAnkle")
     right_ankle = root.find("RightAnkle")
+    torso = root.find("Torso")
     if left_ankle is None or right_ankle is None:
         print("Could not find LeftAnkle or RightAnkle in skeleton.")
+        return False
+    if torso is None:
+        print("Could not find Torso in skeleton.")
         return False
 
     total_frames = int(anim["duration"] * fps) + 1
     frames = list(range(total_frames))
     left_y = []
     right_y = []
+    balance = []  # d1/(d1+d2): 0=over left ankle, 1=over right ankle, 0.5=centered
 
     for frame in frames:
         animate_skeleton(root, frame, leg_ik=False)
         root.update_world_pos()
         left_y.append(left_ankle.globalPos[1])
         right_y.append(right_ankle.globalPos[1])
+        tx = torso.globalPos[0]
+        d1 = abs(tx - left_ankle.globalPos[0])
+        d2 = abs(tx - right_ankle.globalPos[0])
+        balance.append(d1 / (d1 + d2) if (d1 + d2) > 0 else 0.5)
 
-    fig, ax = plt.subplots(figsize=(max(8, total_frames / 60), 4))
-    ax.plot(frames, left_y, label="LeftAnkle", color="steelblue", linewidth=1.0)
-    ax.plot(frames, right_y, label="RightAnkle", color="tomato", linewidth=1.0)
-    ax.set_xlim(0, total_frames - 1)
-    ax.set_ylim(-0.2, 0.2)
-    ax.set_xlabel("Frame")
-    ax.set_ylabel("Height (m)")
-    ax.set_title(f"Ankle Vertical Position — {os.path.basename(vmd_path)}")
-    ax.legend()
-    ax.grid(True, linestyle='--', alpha=0.5)
+    part_size = 900
+    num_parts = math.ceil(total_frames / part_size)
 
+    fig, axes = plt.subplots(num_parts, 1, figsize=(18, 4 * num_parts), squeeze=False)
+
+    for i in range(num_parts):
+        ax = axes[i, 0]
+        start = i * part_size
+        end = min(start + part_size, total_frames)
+        f_slice = frames[start:end]
+        ax.plot(f_slice, left_y[start:end], label="LeftAnkle", color="steelblue", linewidth=1.0)
+        ax.plot(f_slice, right_y[start:end], label="RightAnkle", color="tomato", linewidth=1.0)
+        ax.set_xlim(start, end - 1)
+        ax.set_ylim(-0.5, 0.5)
+        ax.set_xlabel("Frame")
+        ax.set_ylabel("Height (m)")
+        ax.set_title(f"Ankle Vertical Position — {os.path.basename(vmd_path)} [frames {start}–{end - 1}]")
+        ax.grid(True, linestyle='--', alpha=0.5)
+
+        ax2 = ax.twinx()
+        ax2.plot(f_slice, balance[start:end], label="Balance (Torso)", color="mediumseagreen", linewidth=1.0, linestyle='--')
+        ax2.axhline(0.5, color="mediumseagreen", linewidth=0.5, linestyle=':')
+        ax2.set_ylim(0, 1)
+        ax2.set_ylabel("Balance ratio (0=left, 1=right)")
+
+        lines1, labels1 = ax.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+
+    fig.tight_layout()
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     fig.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close(fig)
