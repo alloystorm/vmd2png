@@ -359,9 +359,14 @@ def plot_ankle_heights(vmd_path, output_path, fps=30.0):
 
     left_ankle = root.find("LeftAnkle")
     right_ankle = root.find("RightAnkle")
+    left_toe = root.find("LeftToe")
+    right_toe = root.find("RightToe")
     torso = root.find("Torso")
     if left_ankle is None or right_ankle is None:
         print("Could not find LeftAnkle or RightAnkle in skeleton.")
+        return False
+    if left_toe is None or right_toe is None:
+        print("Could not find LeftToe or RightToe in skeleton.")
         return False
     if torso is None:
         print("Could not find Torso in skeleton.")
@@ -371,6 +376,8 @@ def plot_ankle_heights(vmd_path, output_path, fps=30.0):
     frames = list(range(total_frames))
     left_y = []
     right_y = []
+    left_toe_y = []
+    right_toe_y = []
     balance = []  # d1/(d1+d2): 0=over left ankle, 1=over right ankle, 0.5=centered
 
     for frame in frames:
@@ -378,6 +385,8 @@ def plot_ankle_heights(vmd_path, output_path, fps=30.0):
         root.update_world_pos()
         left_y.append(left_ankle.globalPos[1])
         right_y.append(right_ankle.globalPos[1])
+        left_toe_y.append(left_toe.globalPos[1])
+        right_toe_y.append(right_toe.globalPos[1])
         tx = torso.globalPos[0]
         d1 = abs(tx - left_ankle.globalPos[0])
         d2 = abs(tx - right_ankle.globalPos[0])
@@ -395,6 +404,8 @@ def plot_ankle_heights(vmd_path, output_path, fps=30.0):
         f_slice = frames[start:end]
         ax.plot(f_slice, left_y[start:end], label="LeftAnkle", color="steelblue", linewidth=1.0)
         ax.plot(f_slice, right_y[start:end], label="RightAnkle", color="tomato", linewidth=1.0)
+        ax.plot(f_slice, left_toe_y[start:end], label="LeftToe", color="cornflowerblue", linewidth=0.8, linestyle=':')
+        ax.plot(f_slice, right_toe_y[start:end], label="RightToe", color="lightsalmon", linewidth=0.8, linestyle=':')
         ax.set_xlim(start, end - 1)
         ax.set_ylim(-0.5, 0.5)
         ax.set_xlabel("Frame")
