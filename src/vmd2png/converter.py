@@ -3,7 +3,7 @@ import os
 import struct
 import zlib
 from PIL import Image
-from .vmd import vmd_to_motion_data, write_vmd
+from .vmd import vmd_to_motion_data, write_vmd, summarize_motion, format_motion_summary
 from .skeleton import build_standard_skeleton
 from .bone import sixd_to_quat
 
@@ -182,6 +182,38 @@ def load_from_png_16bit(file_path, min_val, max_val, stride=None):
     
     return uint16_to_float(flat_data, min_val, max_val)
 
+def summarize_vmd(vmd_path, camera_vmd_path=None):
+    """
+    Parse a VMD file and return a keyframe summary (per bone / morph / camera).
+
+    Returns None if the file could not be parsed.
+    """
+    from .vmd import parse_vmd, merge_camera_motion
+    success, anim = parse_vmd(vmd_path, unit=0.085)
+    if not success:
+        return None
+    if camera_vmd_path:
+        anim = merge_camera_motion(anim, camera_vmd_path)
+    return summarize_motion(anim)
+
+def write_motion_summary(vmd_path, output_file, camera_vmd_path=None):
+    """
+    Generate a motion summary for a VMD and write it next to output_file as
+    '<output_basename>_summary.txt'. Also prints it to stdout.
+
+    Returns the summary dict, or None on failure.
+    """
+    summary = summarize_vmd(vmd_path, camera_vmd_path=camera_vmd_path)
+    if summary is None:
+        return None
+    text = format_motion_summary(summary, name=os.path.basename(vmd_path))
+    summary_path = os.path.splitext(output_file)[0] + "_summary.txt"
+    with open(summary_path, "w", encoding="utf-8") as f:
+        f.write(text + "\n")
+    print(text)
+    print(f"Summary written to {summary_path}")
+    return summary
+
 def export_vmd_to_files(vmd_path, output_path=None, out_type='png', leg_ik=False, camera_vmd_path=None):
     if out_type == 'vmd':
         anim = load_motion_dict(vmd_path, leg_ik=leg_ik, camera_vmd_path=camera_vmd_path)
@@ -216,6 +248,9 @@ def export_vmd_to_files(vmd_path, output_path=None, out_type='png', leg_ik=False
         bone_names = [bone.name for bone in actor_bones_list]
         metadata = {'Bones': ','.join(bone_names)}
         save_as_png_16bit(results, output_file, -1, 1, metadata=metadata)
+
+    # Emit a keyframe summary alongside the exported motion data.
+    write_motion_summary(vmd_path, output_file, camera_vmd_path=camera_vmd_path)
     return True
 
 def load_motion_dict(input_path, leg_ik=False, camera_vmd_path=None):

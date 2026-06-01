@@ -267,6 +267,68 @@ def parse_vmd(file_path, unit=0.085, fps=30.0, verbose=False):
         print(f"Error parsing {file_path}: {e}")
         return False, {"unit": unit, "duration": 0}
 
+def summarize_motion(anim):
+    """
+    Summarize the raw keyframe content of a parsed VMD animation dict.
+
+    Counts are based on the sparse VMD keyframes (as authored), not the baked
+    per-frame samples.
+
+    Returns a dict with totals and per-bone / per-morph keyframe counts.
+    """
+    bones = anim.get("bones", {}) or {}
+    morphs = anim.get("morphs", {}) or {}
+    camera_frames = anim.get("camera_frames", []) or []
+
+    bone_counts = {name: len(frames) for name, frames in bones.items()}
+    morph_counts = {name: len(frames) for name, frames in morphs.items()}
+
+    def max_frame(frame_lists):
+        m = 0
+        for frames in frame_lists:
+            for f in frames:
+                if f.get("frame_num", 0) > m:
+                    m = f["frame_num"]
+        return m
+
+    last_frame = max(
+        max_frame(bones.values()),
+        max_frame(morphs.values()),
+        max((f.get("frame_num", 0) for f in camera_frames), default=0),
+    )
+
+    return {
+        "duration_sec": anim.get("duration", 0),
+        "last_frame": last_frame,
+        "num_bones": len(bone_counts),
+        "num_bone_keyframes": sum(bone_counts.values()),
+        "num_morphs": len(morph_counts),
+        "num_morph_keyframes": sum(morph_counts.values()),
+        "num_camera_keyframes": len(camera_frames),
+        "bones": bone_counts,
+        "morphs": morph_counts,
+    }
+
+def format_motion_summary(summary, name=None):
+    """Render a summarize_motion() result as a human-readable text block."""
+    title = f"Motion Summary: {name}" if name else "Motion Summary"
+    lines = [title, "=" * len(title)]
+    lines.append(f"Duration:    {summary['duration_sec']:.2f} s  (last keyframe: {summary['last_frame']})")
+    lines.append("")
+
+    lines.append(f"Bones:       {summary['num_bones']} bones, {summary['num_bone_keyframes']} keyframes")
+    for name_, count in sorted(summary["bones"].items(), key=lambda x: (-x[1], x[0])):
+        lines.append(f"    {name_:<24} {count}")
+    lines.append("")
+
+    lines.append(f"Morphs:      {summary['num_morphs']} morphs, {summary['num_morph_keyframes']} keyframes")
+    for name_, count in sorted(summary["morphs"].items(), key=lambda x: (-x[1], x[0])):
+        lines.append(f"    {name_:<24} {count}")
+    lines.append("")
+
+    lines.append(f"Camera:      {summary['num_camera_keyframes']} keyframes")
+    return "\n".join(lines)
+
 def write_vmd(file_path, animation_dict, model_name="MotionOutput"):
     """
     Write animation data to a VMD file.
