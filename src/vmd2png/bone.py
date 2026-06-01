@@ -1,6 +1,42 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
+def quat_to_6d(quat):
+    """
+    Convert a quaternion [x, y, z, w] to a 6D rotation representation.
+
+    The 6D representation is the first two columns of the rotation matrix
+    (Zhou et al., "On the Continuity of Rotation Representations in Neural
+    Networks", CVPR 2019), which is continuous and well suited for learning.
+
+    Returns:
+        np.ndarray of shape (6,): [m00, m10, m20, m01, m11, m21]
+    """
+    m = R.from_quat(quat).as_matrix()
+    return np.concatenate([m[:, 0], m[:, 1]])
+
+def sixd_to_quat(sixd):
+    """
+    Convert a 6D rotation representation back to a quaternion [x, y, z, w].
+
+    Reconstructs an orthonormal rotation matrix from the two 3-vectors using
+    Gram-Schmidt, then converts to a quaternion.
+    """
+    sixd = np.asarray(sixd, dtype=float)
+    a1 = sixd[0:3]
+    a2 = sixd[3:6]
+
+    n1 = np.linalg.norm(a1)
+    b1 = a1 / n1 if n1 > 1e-10 else np.array([1.0, 0.0, 0.0])
+
+    a2 = a2 - np.dot(b1, a2) * b1
+    n2 = np.linalg.norm(a2)
+    b2 = a2 / n2 if n2 > 1e-10 else np.array([0.0, 1.0, 0.0])
+
+    b3 = np.cross(b1, b2)
+    m = np.column_stack([b1, b2, b3])
+    return R.from_matrix(m).as_quat()
+
 def rot_lerp(prev_quat, next_quat, t):
     """
     Linear interpolation between quaternions.
@@ -175,9 +211,9 @@ class Bone:
             if mode == 'pos':
                 data.extend(self.globalPos)
             if mode == 'global':
-                data.extend(self.globalQuat)
+                data.extend(quat_to_6d(self.globalQuat))
             elif mode == 'local':
-                data.extend(self.quat)
+                data.extend(quat_to_6d(self.quat))
         for child in self.children:
             data.extend(child.export_data(mode, withOptional))
         return data

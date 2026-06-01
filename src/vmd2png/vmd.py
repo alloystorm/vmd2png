@@ -7,7 +7,7 @@ from scipy.spatial.transform import Rotation as R, Slerp
 import time
 from .ik import solve_two_bone_ik
 from .skeleton import build_standard_skeleton, verify_global_positions
-from .bone import rot_lerp
+from .bone import rot_lerp, quat_to_6d
 
 # Japanese to English translations
 bone_name_translation = {
@@ -450,15 +450,15 @@ def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mo
         if has_camera:
             camera.update(frame)
             
-            # Our exported NPY format was: CameraPos(3), FOV(1), Rot(4).
-            
+            # Our exported format is: CameraPos(3), FOV(1), Rot6D(6).
+
             frame_data.extend(camera.global_pos * 1000 / 32768)
             frame_data.append(float(camera.current_fov) / 180)
-            frame_data.extend(camera.global_rot)
+            frame_data.extend(quat_to_6d(camera.global_rot))
         else:
             frame_data.extend([0,0.03,-0.1])
             frame_data.append(30.0 / 180)
-            frame_data.extend([0,0,0,1])
+            frame_data.extend([1,0,0,0,1,0])  # identity rotation (6D)
         
         if verbose and frame == 0:
             print(f"Data length: {len(frame_data)}")

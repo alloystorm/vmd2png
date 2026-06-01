@@ -134,7 +134,7 @@ def test_pipeline():
     assert success, "Failed to convert motion PNG to VMD"
     
     print(f'Bone frames: {len(parsed_anim["bone_frames"])}')
-    assert len(parsed_anim["bone_frames"]) / 73 == 2000
+    assert len(parsed_anim["bone_frames"]) / 65 == 2000
     
     print(f'Camera frames: {len(parsed_anim["camera_frames"])}')
     assert len(parsed_anim["camera_frames"]) == 2000

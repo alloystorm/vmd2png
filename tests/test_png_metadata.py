@@ -26,8 +26,8 @@ def main():
     # Calculate expected stride
     root_skel, _ = build_standard_skeleton()
     actor_bones_list = root_skel.export_bones()
-    stride_actor = 4 + len(actor_bones_list) * 4
-    stride_cam = 8
+    stride_actor = 4 + len(actor_bones_list) * 6
+    stride_cam = 3 + 1 + 6
     stride = stride_actor + stride_cam
     
     try:

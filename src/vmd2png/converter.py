@@ -5,6 +5,7 @@ import zlib
 from PIL import Image
 from .vmd import vmd_to_motion_data, write_vmd
 from .skeleton import build_standard_skeleton
+from .bone import sixd_to_quat
 
 def float_to_uint16(data, min_val, max_val):
     if min_val == max_val:
@@ -125,8 +126,9 @@ def save_as_png_16bit(data, output_path, min_val=-1, max_val=1, metadata=None):
     else:
         if metadata is None:
             metadata = {}
-        metadata['Version'] = '1.0'
-        metadata['Creator'] = 'vmd2png 0.1.2'
+        metadata['Version'] = '2.0'
+        metadata['Creator'] = 'vmd2png 0.2.0'
+        metadata['RotationFormat'] = '6d'
         metadata['TotalFrames'] = frames
         metadata['RowsPerFrame'] = rows_per_frame
         add_png_metadata(output_path, metadata)
@@ -232,9 +234,9 @@ def load_motion_dict(input_path, leg_ik=False, camera_vmd_path=None):
     from .skeleton import build_standard_skeleton
     root_skel, _ = build_standard_skeleton()
     actor_bones_list = root_skel.export_bones()
-    stride_actor = 4 + len(actor_bones_list) * 4
-    stride_cam = 8
-    
+    stride_actor = 4 + len(actor_bones_list) * 6
+    stride_cam = 3 + 1 + 6
+
     stride = stride_actor + stride_cam
 
     data = None
@@ -264,14 +266,14 @@ def load_motion_dict(input_path, leg_ik=False, camera_vmd_path=None):
         
         pos = row[0:3] * 32768 / 1000
         fov = row[3] * 180
-        rot = row[4:8]
-        
+        rot = sixd_to_quat(row[4:10])
+
         if fov < 0.01: break
-        
+
         camera_frames.append({
             "frame_num": i,
             "position": tuple(pos),
-            "rotation": rot, 
+            "rotation": rot,
             "dist": 0.0, 
             "fov": fov,
             "bezier": bytearray([20]*24),
@@ -287,11 +289,14 @@ def load_motion_dict(input_path, leg_ik=False, camera_vmd_path=None):
         center_pos = row[0:3]
         
         for j, bone in enumerate(actor_bones_list):
-            idx = 4 + j * 4
-            if idx+4 > len(row): break
-            quat = row[idx:idx+4]
-            
-            if np.all(quat == 0): quat = np.array([0,0,0,1])
+            idx = 4 + j * 6
+            if idx+6 > len(row): break
+            rot6d = row[idx:idx+6]
+
+            if np.all(rot6d == 0):
+                quat = np.array([0,0,0,1])
+            else:
+                quat = sixd_to_quat(rot6d)
 
             pos = (0,0,0)
             if bone.name == "Center":
