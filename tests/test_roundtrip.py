@@ -152,9 +152,10 @@ def test_pipeline():
     # Check "Center" position in last frame (approx)
     # Original: (0, 0.9, 0) for frame 9
     
-    # Find frame 9 for Center
-    f9 = next((f for f in char_anim["bone_frames"] if f["frame_num"] == 9 and f["name"] == "Center"), None)
-    assert f9 is not None, "Center frame 9 not found"
+    # Find frame 9 for Master (the root world translation is reconstructed onto
+    # the Master bone so it is not re-rotated by Master's own rotation).
+    f9 = next((f for f in char_anim["bone_frames"] if f["frame_num"] == 9 and f["name"] == "Master"), None)
+    assert f9 is not None, "Master frame 9 not found"
     # Note: vmd.py parse_vmd applies 'unit' scaling when reading?
     # parse_vmd: position = (px * unit, ...)
     # write_vmd: px / unit

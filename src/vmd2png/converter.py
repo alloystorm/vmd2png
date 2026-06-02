@@ -334,7 +334,10 @@ def load_motion_dict(input_path, leg_ik=False, camera_vmd_path=None):
                 quat = sixd_to_quat(rot6d)
 
             pos = (0,0,0)
-            if bone.name == "Center":
+            # The exported offset is the root's world-space displacement. Apply it
+            # to the Master (world root) bone, not Center: Center is a child of
+            # Master, so Master's own rotation would otherwise re-rotate (mirror) it.
+            if bone.name == "Master":
                 pos = tuple(center_pos * 32768 / 1000)
             
             frame = {
