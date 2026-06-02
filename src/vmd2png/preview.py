@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from matplotlib.widgets import Slider, Button
+from matplotlib.widgets import Slider, Button, RadioButtons
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from scipy.spatial.transform import Rotation as R
@@ -74,6 +74,75 @@ def plot_skeleton_3d(root, ax):
     # Draw logic
     collect_bones(root, None)
 
+def _collect_positions(bone, out):
+    """Recursively gather every bone's global position."""
+    out.append(np.asarray(bone.globalPos, dtype=float))
+    for child in bone.children:
+        _collect_positions(child, out)
+
+
+def _equal_box(ax):
+    try:
+        ax.set_box_aspect((1, 1, 1))
+    except Exception:
+        pass
+
+
+def _fit_focused(ax, waist, camera):
+    """Focused actor view: center on the actor, range tracks actor-camera distance."""
+    pc = waist.globalPos
+    radius = max(float(np.linalg.norm(camera.global_pos - pc)), 1.0)
+    ax.set_xlim(pc[0] - radius, pc[0] + radius)
+    ax.set_ylim(pc[2] - radius, pc[2] + radius)
+    ax.set_zlim(0, radius * 2)
+    ax.set_proj_type('ortho')
+    _equal_box(ax)
+
+
+def _fit_overall(ax, positions, camera):
+    """Overall view: fit the whole actor and the camera in frame."""
+    pts = [np.asarray(p, float) for p in positions]
+    if camera.frames:
+        pts.append(np.asarray(camera.global_pos, float))
+        pts.append(np.asarray(camera.target_pos, float))
+    pts = np.array(pts)
+    mn, mx = pts.min(0), pts.max(0)
+    c = (mn + mx) / 2.0
+    half = max(float((mx - mn).max()) / 2.0, 1.0) * 1.1
+    ax.set_xlim(c[0] - half, c[0] + half)
+    ax.set_ylim(c[2] - half, c[2] + half)
+    ax.set_zlim(c[1] - half, c[1] + half)
+    ax.set_proj_type('ortho')
+    _equal_box(ax)
+
+
+def _fit_camera(ax, camera):
+    """Camera view: look through the camera (orientation + FOV)."""
+    import math
+    fwd = np.asarray(camera.target_pos, float) - np.asarray(camera.global_pos, float)
+    n = float(np.linalg.norm(fwd))
+    if n < 1e-6:
+        fwd = np.array([0.0, 0.0, 1.0]); n = 1.0
+    fwd = fwd / n
+    # Plot axes are (worldX, worldZ, worldY); the viewer sits opposite the look dir.
+    vd = -np.array([fwd[0], fwd[2], fwd[1]])
+    elev = math.degrees(math.asin(float(np.clip(vd[2], -1.0, 1.0))))
+    azim = math.degrees(math.atan2(vd[1], vd[0]))
+    ax.view_init(elev=elev, azim=azim)
+
+    fov = max(float(camera.current_fov), 1.0)
+    half = max(float(camera.distance) * math.tan(math.radians(fov / 2.0)), 1.0)
+    c = np.asarray(camera.target_pos, float)
+    ax.set_xlim(c[0] - half, c[0] + half)
+    ax.set_ylim(c[2] - half, c[2] + half)
+    ax.set_zlim(c[1] - half, c[1] + half)
+    try:
+        ax.set_proj_type('persp', focal_length=1.0 / math.tan(math.radians(fov / 2.0)))
+    except TypeError:
+        ax.set_proj_type('persp')
+    _equal_box(ax)
+
+
 def preview_motion(input_path, fps=30, leg_ik=False, camera_vmd_path=None):
     """
     Preview motion from VMD, NPY, or PNG file.
@@ -111,7 +180,8 @@ def preview_motion(input_path, fps=30, leg_ik=False, camera_vmd_path=None):
     # Animation state
     anim_state = {
         'frame': 0,
-        'running': True
+        'running': True,
+        'view': 'focused'
     }
 
     def update_plot(frame, leg_ik):
@@ -126,20 +196,25 @@ def preview_motion(input_path, fps=30, leg_ik=False, camera_vmd_path=None):
         
         # Plot Skeleton
         plot_skeleton_3d(center, ax)
-        
-        # Plot Camera
-        draw_camera_frustum(ax, camera, scale=2.0)
-        
+
+        view = anim_state['view']
+
+        # Draw the camera frustum except when looking through the camera itself.
+        if view != 'camera':
+            draw_camera_frustum(ax, camera, scale=2.0)
+
+        # Frame the scene according to the selected view mode.
         # Plot coordinates: x=X, y=Z(Depth), z=Y(Height)
-        pc = waist.globalPos
-        radius = np.linalg.norm(camera.global_pos - pc)
-        radius = max(radius, 1.0) # Avoid too close zoom
-        
-        ax.set_xlim(pc[0] - radius, pc[0] + radius)
-        ax.set_zlim(0, radius * 2)
-        ax.set_ylim(pc[2] - radius, pc[2] + radius)
-        
-        ax.set_title(f"Frame: {int(frame)}")
+        if view == 'overall':
+            positions = []
+            _collect_positions(root, positions)
+            _fit_overall(ax, positions, camera)
+        elif view == 'camera' and camera.frames:
+            _fit_camera(ax, camera)
+        else:
+            _fit_focused(ax, waist, camera)
+
+        ax.set_title(f"Frame: {int(frame)}  [{view}]")
         ax.set_xlabel('X')
         ax.set_ylabel('Z (Depth)')
         ax.set_zlabel('Y (Up)')
@@ -181,8 +256,20 @@ def preview_motion(input_path, fps=30, leg_ik=False, camera_vmd_path=None):
     def toggle_play(event):
         anim_state['running'] = not anim_state['running']
         btn_play.label.set_text('Pause' if anim_state['running'] else 'Play')
-        
+
     btn_play.on_clicked(toggle_play)
+
+    # View mode selector
+    ax_view = plt.axes([0.015, 0.45, 0.14, 0.16], facecolor='lightgoldenrodyellow')
+    view_radio = RadioButtons(ax_view, ('Focused', 'Overall', 'Camera'), active=0)
+    view_labels = {'Focused': 'focused', 'Overall': 'overall', 'Camera': 'camera'}
+
+    def on_view_change(label):
+        anim_state['view'] = view_labels[label]
+        update_plot(anim_state['frame'], leg_ik)
+        fig.canvas.draw_idle()
+
+    view_radio.on_clicked(on_view_change)
 
     # Use a generator or infinite loop for frames so we control flow manually
     ani = animation.FuncAnimation(fig, update, frames=None, interval=1000/fps, cache_frame_data=False)
