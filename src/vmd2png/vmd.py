@@ -559,12 +559,16 @@ def animate_skeleton(root_bone, frame_num, leg_ik):
         root_bone.calc_world_pos(root_pos, root_rot)
 
 def apply_leg_ik(root_bone):
-    from .ik import solve_two_bone_ik
+    # Apply IK per leg, but ONLY for legs whose foot-IK bone is actually animated
+    # (more than one keyframe). For pure-FK legs the IK bone sits static at its
+    # rest pose, and solving toward it would overwrite the genuine keyframed leg
+    # rotations. Gating on has_ik_movement makes baking IK safe for every motion,
+    # so the exported data is consistent regardless of whether the source used IK.
     left_leg_ik = root_bone.find("LeftLegIK")
     right_leg_ik = root_bone.find("RightLegIK")
-    if left_leg_ik:
+    if has_ik_movement(left_leg_ik):
         apply_single_leg_ik(root_bone, "Left", left_leg_ik.globalPos)
-    if right_leg_ik:
+    if has_ik_movement(right_leg_ik):
         apply_single_leg_ik(root_bone, "Right", right_leg_ik.globalPos)
 
 def has_ik_movement(ik_bone):
