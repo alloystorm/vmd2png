@@ -91,7 +91,7 @@ def _equal_box(ax):
 def _fit_focused(ax, waist, camera):
     """Focused actor view: center on the actor, range tracks actor-camera distance."""
     pc = waist.globalPos
-    radius = max(float(np.linalg.norm(camera.global_pos - pc)), 1.0)
+    radius = 1 #max(float(np.linalg.norm(camera.global_pos - pc)), 1.0)
     ax.set_xlim(pc[0] - radius, pc[0] + radius)
     ax.set_ylim(pc[2] - radius, pc[2] + radius)
     ax.set_zlim(0, radius * 2)
