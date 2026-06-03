@@ -14,6 +14,8 @@ def main():
     parser_preview.add_argument("--camera", help="Path of camera VMD file to be merged")
     parser_preview.add_argument("--fps", type=int, default=30, help="Playback FPS")
     parser_preview.add_argument("--ik", action="store_true", help="Use leg IK")
+    parser_preview.add_argument("--t-pose", action="store_true",
+                                help="Motion authored for a T-pose model; retarget arms to the A-pose skeleton")
     
     # Convert Command
     parser_convert = subparsers.add_parser("convert", help="Convert between VMD and PNG/NPY")
@@ -34,7 +36,7 @@ def main():
         if not os.path.exists(args.path):
             print(f"Error: File not found: {args.path}")
             sys.exit(1)
-        preview_motion(args.path, fps=args.fps, camera_vmd_path=args.camera, leg_ik=args.ik)
+        preview_motion(args.path, fps=args.fps, camera_vmd_path=args.camera, leg_ik=args.ik, t_pose=args.t_pose)
         
     elif args.command == "convert":
         if not os.path.exists(args.input):

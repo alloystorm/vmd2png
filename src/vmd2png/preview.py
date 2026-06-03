@@ -143,17 +143,23 @@ def _fit_camera(ax, camera):
     _equal_box(ax)
 
 
-def preview_motion(input_path, fps=30, leg_ik=False, camera_vmd_path=None):
+def preview_motion(input_path, fps=30, leg_ik=False, camera_vmd_path=None, t_pose=False):
     """
     Preview motion from VMD, NPY, or PNG file.
+
+    t_pose: if True, retarget a T-pose-authored motion to the A-pose skeleton
+            before playback (arms straight out -> A-pose).
     """
     anim = load_motion_dict(input_path, leg_ik=leg_ik, camera_vmd_path=camera_vmd_path)
     if not anim:
         print("Failed to load animation.")
         return
-        
+
     root, map_bones = build_standard_skeleton()
     load_vmd_to_skeleton(anim, map_bones)
+    if t_pose:
+        from .pose_convert import convert_t_to_a_pose
+        convert_t_to_a_pose(map_bones)
     
     # Setup Camera
     camera = Camera(anim.get("camera_frames", []))
