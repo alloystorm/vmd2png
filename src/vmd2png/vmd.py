@@ -461,21 +461,27 @@ def merge_camera_motion(anim, camera_vmd_path):
             
     return anim
 
-def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mode='local', verbose=True, leg_ik=False):
+def vmd_to_motion_data(file_path, camera_vmd_path=None, unit=0.085, fps=30.0, mode='local', verbose=True, leg_ik=False, t_pose=False):
     """
     Process VMD and return combined character and camera data.
+
+    t_pose: if True, the motion was authored for a T-pose model (arms horizontal);
+            retarget the arm chain to this package's A-pose skeleton before baking.
     """
     root, all_bones = build_standard_skeleton()
     center = root.find("Waist")
-    
+
     success, anim = parse_vmd(file_path, unit=unit, fps=fps)
     if not success:
         return None
-        
+
     if camera_vmd_path:
         anim = merge_camera_motion(anim, camera_vmd_path)
-    
+
     load_vmd_to_skeleton(anim, all_bones)
+    if t_pose:
+        from .pose_convert import convert_t_to_a_pose
+        convert_t_to_a_pose(all_bones)
     verify_global_positions(root)
     
     totalFrames = int(anim["duration"] * fps) + 1
