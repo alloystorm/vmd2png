@@ -599,10 +599,17 @@ def apply_single_leg_ik(root_bone, side, target_pos):
         upper_leg_length = np.linalg.norm(knee_pos - hip_pos)
         lower_leg_length = np.linalg.norm(ankle_pos - knee_pos)
         
-        # Calculate target knee position using geometric IK
-        # Pass current knee_pos as hint to keep bending consistent
+        # Anatomical forward for the knee: the pelvis (hip's parent) faces local -Z,
+        # and a knee only bends forward. Passed so a near-straight / stale thigh pose
+        # can't make the geometric solver bend the knee backward (the hint alone does
+        # this on IK-driven motions that don't keyframe the thigh).
+        forward_global = R.from_quat(hip_bone.parent.globalQuat).apply([0, 0, -1])
+
+        # Calculate target knee position using geometric IK. Pass the current knee_pos
+        # as a hint (keeps the existing bend side) plus the forward veto above.
         target_knee_pos_global = solve_ik_geometry(
-            hip_pos, target_pos, upper_leg_length, lower_leg_length, knee_pos
+            hip_pos, target_pos, upper_leg_length, lower_leg_length, knee_pos,
+            forward=forward_global
         )
         
         # --- Calculate Hip Rotation ---
