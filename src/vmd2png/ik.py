@@ -21,18 +21,9 @@ def solve_two_bone_ik(start_pos, end_pos, upper_length, lower_length, knee_hint_
     
     return hip_rotation.as_quat(), knee_rotation.as_quat()
 
-def solve_ik_geometry(start_pos, end_pos, upper_length, lower_length, knee_hint_pos=None,
-                      forward=None):
+def solve_ik_geometry(start_pos, end_pos, upper_length, lower_length, knee_hint_pos=None):
     """
     Calculate the joint position (knee) for a two-bone IK chain.
-
-    knee_hint_pos: the current (pre-IK) joint position, used to keep the bend on the
-        same side it is already on. For a leg whose upper bone is near-straight (e.g.
-        IK-driven motions that don't keyframe the thigh), this hint becomes unreliable
-        and can point *behind* the hip->target line, bending the knee backward.
-    forward: optional anatomical "forward" direction (a real knee only bends forward).
-        When given it replaces the degenerate fallback AND vetoes any hint that would
-        bend the joint backward, so a stale/straight thigh pose can't invert the knee.
     """
     # Vector from start to end
     target_vector = end_pos - start_pos
@@ -65,14 +56,6 @@ def solve_ik_geometry(start_pos, end_pos, upper_length, lower_length, knee_hint_
     hip_to_knee_proj = upper_length * np.cos(hip_angle)
     knee_height = upper_length * np.sin(hip_angle)
     
-    # Anatomical forward, projected perpendicular to the hip->target line (the plane
-    # the knee bends in). Used as the reliable fallback / veto below.
-    fwd_dir = None
-    if forward is not None:
-        fwd_perp = forward - np.dot(forward, target_dir) * target_dir
-        if np.linalg.norm(fwd_perp) > 1e-6:
-            fwd_dir = fwd_perp / np.linalg.norm(fwd_perp)
-
     # Determine knee bend direction
     if knee_hint_pos is not None:
         hint_vector = knee_hint_pos - start_pos
@@ -80,15 +63,9 @@ def solve_ik_geometry(start_pos, end_pos, upper_length, lower_length, knee_hint_
         if np.linalg.norm(hint_proj) > 1e-6:
             bend_dir = hint_proj / np.linalg.norm(hint_proj)
         else:
-            bend_dir = fwd_dir if fwd_dir is not None else get_default_bend_direction(target_dir)
+            bend_dir = get_default_bend_direction(target_dir)
     else:
-        bend_dir = fwd_dir if fwd_dir is not None else get_default_bend_direction(target_dir)
-
-    # A real knee only bends forward: if the (possibly stale) hint would bend it
-    # backward, override with the anatomical forward direction. Keeps the hint's
-    # lateral nuance whenever it is on the forward side (turned-out poses, etc.).
-    if fwd_dir is not None and np.dot(bend_dir, fwd_dir) < 0:
-        bend_dir = fwd_dir
+        bend_dir = get_default_bend_direction(target_dir)
 
     return start_pos + target_dir * hip_to_knee_proj + bend_dir * knee_height
 
@@ -128,6 +105,48 @@ def calculate_rotation_between_vectors(from_vec, to_vec):
     axis = axis / np.linalg.norm(axis)
     angle = np.arccos(np.clip(np.dot(from_vec, to_vec), -1.0, 1.0))
     return R.from_rotvec(angle * axis)
+
+def calc_2bone_axis_ik(vec1, vec2, target_offset, axis):
+    """Axis-constrained planar two-bone IK.
+
+    Given the upper bone vector ``vec1`` (root->mid) and lower bone vector ``vec2``
+    (mid->tip), returns world-space rotations ``(r1, r2)`` (scipy Rotation) to apply
+    to the upper and lower bone so the tip reaches ``root + vec1 + vec2 +
+    target_offset``, with the joint bending strictly around ``axis``.
+
+    Because the bend side is fixed by ``axis`` (not by a per-frame hint), the joint
+    can never flip to the wrong side. Apply as: mid.append(r2) then root.append(r1)
+    (the root append also carries the mid, so the net lower-bone rotation is r1*r2).
+    """
+    l1 = np.linalg.norm(vec1)
+    l2 = np.linalg.norm(vec2)
+    n = np.linalg.norm(axis)
+    if l1 < 1e-9 or l2 < 1e-9 or n < 1e-9:
+        return R.identity(), R.identity()
+    axis = axis / n
+
+    target_vec = vec1 + vec2 + target_offset
+    l3 = np.linalg.norm(target_vec)
+    if l3 < 1e-9:
+        return R.identity(), R.identity()
+    # Clamp the reach into [|l1-l2|, l1+l2] so the triangle is always solvable.
+    l3 = float(np.clip(l3, abs(l1 - l2) + 1e-6, l1 + l2 - 1e-6))
+    target_dir = target_vec / np.linalg.norm(target_vec)
+
+    # Interior angle at the root (law of cosines), then swing the upper bone off the
+    # target direction by that angle *around the fixed axis* -> deterministic bend side.
+    cos1 = np.clip((l1 * l1 + l3 * l3 - l2 * l2) / (2 * l1 * l3), -1.0, 1.0)
+    a1 = np.arccos(cos1)
+    upper_dir = R.from_rotvec(a1 * axis).apply(target_dir)
+
+    v1 = upper_dir * l1                       # desired upper bone vector
+    v2 = target_dir * l3 - v1                 # desired lower bone vector (tip on target_dir)
+    r1 = calculate_rotation_between_vectors(vec1, v1)
+    # r2 is composed so that after r1 propagates from the root, the lower bone lands
+    # exactly on v2 (net rotation on the lower bone is r1 * r2).
+    r2 = r1.inv() * calculate_rotation_between_vectors(vec2, v2)
+    return r1, r2
+
 
 def clamp_to_reachable_distance(start_pos, target_pos, max_reach, min_reach=0):
     """

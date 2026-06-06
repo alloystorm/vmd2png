@@ -582,76 +582,84 @@ def has_ik_movement(ik_bone):
         return False
     return ik_bone.frames and len(ik_bone.frames) > 1
 
+# Knee bend hinge axis, fixed in the thigh (Leg) bone's LOCAL frame. The knee is a
+# pure hinge, so constraining the bend to this axis makes the bend side fully
+# deterministic — it cannot flip between keyframes the way a per-frame pole/hint can.
+# Sign chosen so the knee bends forward for this (right-handed) skeleton; both legs
+# share it because both thighs have identity rest rotation. See solve_nonplanar_2bone_ik.
+KNEE_BEND_AXIS_LOCAL = np.array([1.0, 0.0, 0.0])
+
+
+def _project_on_plane(v, n):
+    """Component of v lying in the plane with unit normal n."""
+    return v - np.dot(v, n) * n
+
+
+def _append_world_rotation(bone, q_world):
+    """Apply a world-space rotation `q_world` (scipy Rotation) to `bone`, pivoting at
+    its own position, and refresh the bone + its descendants. Mirrors Unity
+    RigBone.appendRotation: the bone's position is fixed by its parent, so only its
+    orientation changes and the children follow."""
+    new_global = q_world * R.from_quat(bone.globalQuat)
+    parent_global = R.from_quat(bone.parent.globalQuat)
+    bone.quat = (parent_global.inv() * new_global).as_quat()
+    bone.calc_world_pos(bone.parent.globalPos, bone.parent.globalQuat)
+
+
+def solve_nonplanar_2bone_ik(root_bone, mid_bone, tip_local, local_axis, target_pos, iters=4):
+    """Iterative two-bone IK that bends `mid` around a hinge axis fixed in `root`'s
+    local frame, driving the tip (mid_bone + tip_local) onto target_pos.
+
+    Ported from the project's UnityIKResolver.solveNonPlanar2BoneIK. The hinge axis is
+    `root.globalRot * local_axis`, recomputed each pass: as the root swings to aim at a
+    3D target, the axis tracks it, so the chain reaches off-plane targets while the
+    knee stays a clean hinge (no side flips). A few passes converge."""
+    from .ik import calc_2bone_axis_ik
+    root_pos = root_bone.globalPos
+    for _ in range(iters):
+        mid_pos = mid_bone.globalPos
+        mid_rot = R.from_quat(mid_bone.globalQuat)
+        root_rot = R.from_quat(root_bone.globalQuat)
+        tip_pos = mid_pos + mid_rot.apply(tip_local)
+
+        world_axis = root_rot.apply(local_axis)
+        wa = np.linalg.norm(world_axis)
+        if wa < 1e-9:
+            break
+        world_axis /= wa
+        world_vec = mid_rot.apply(mid_bone.zeroPos - root_bone.zeroPos)
+        wv = np.linalg.norm(world_vec)
+        if wv > 1e-9:
+            world_vec /= wv
+
+        # Project the current mid/tip onto the hinge plane, solve the planar axis IK
+        # there, then apply. The offset folds the projection back onto the real tip.
+        proj_mid = _project_on_plane(mid_pos - root_pos, world_axis) + root_pos
+        proj_tip = world_vec * np.dot(tip_pos - proj_mid, world_vec) + proj_mid
+        offset_target = target_pos + proj_tip - tip_pos
+
+        r1, r2 = calc_2bone_axis_ik(proj_mid - root_pos, proj_tip - proj_mid,
+                                    offset_target - proj_tip, world_axis)
+        _append_world_rotation(mid_bone, r2)    # lower bone first ...
+        _append_world_rotation(root_bone, r1)   # ... then upper carries it (net r1*r2)
+
+        tip2 = mid_bone.globalPos + R.from_quat(mid_bone.globalQuat).apply(tip_local)
+        if np.sum((tip2 - target_pos) ** 2) < 1e-7:
+            break
+
+
 def apply_single_leg_ik(root_bone, side, target_pos):
     hip_bone = root_bone.find(f"{side}Leg")
-    knee_bone = root_bone.find(f"{side}Knee") 
+    knee_bone = root_bone.find(f"{side}Knee")
     ankle_bone = root_bone.find(f"{side}Ankle")
     if not all([hip_bone, knee_bone, ankle_bone]):
         return
     try:
-        from .ik import solve_ik_geometry, calculate_rotation_between_vectors
-        
-        hip_pos = hip_bone.globalPos
-        knee_pos = knee_bone.globalPos
-        ankle_pos = ankle_bone.globalPos
-        
-        # Calculate bone lengths
-        upper_leg_length = np.linalg.norm(knee_pos - hip_pos)
-        lower_leg_length = np.linalg.norm(ankle_pos - knee_pos)
-        
-        # Anatomical forward for the knee: the pelvis (hip's parent) faces local -Z,
-        # and a knee only bends forward. Passed so a near-straight / stale thigh pose
-        # can't make the geometric solver bend the knee backward (the hint alone does
-        # this on IK-driven motions that don't keyframe the thigh).
-        forward_global = R.from_quat(hip_bone.parent.globalQuat).apply([0, 0, -1])
-
-        # Calculate target knee position using geometric IK. Pass the current knee_pos
-        # as a hint (keeps the existing bend side) plus the forward veto above.
-        target_knee_pos_global = solve_ik_geometry(
-            hip_pos, target_pos, upper_leg_length, lower_leg_length, knee_pos,
-            forward=forward_global
-        )
-        
-        # --- Calculate Hip Rotation ---
-        # 1. Determine local bone rest direction
-        v_upper_rest_local = knee_bone.zeroPos - hip_bone.zeroPos
-        norm_upper = np.linalg.norm(v_upper_rest_local)
-        if norm_upper > 1e-6:
-            v_upper_rest_local /= norm_upper
-        else:
-            v_upper_rest_local = np.array([0, -1, 0])
-            
-        # 2. Convert target direction to parent space
-        v_upper_target_global = target_knee_pos_global - hip_pos
-        parent_rot = R.from_quat(hip_bone.parent.globalQuat)
-        v_upper_target_local = parent_rot.inv().apply(v_upper_target_global)
-        
-        # 3. Calculate hip local rotation
-        hip_rotation = calculate_rotation_between_vectors(v_upper_rest_local, v_upper_target_local)
-        hip_bone.quat = hip_rotation.as_quat()
-        
-        # Update hip bone global transform immediately so child (knee) uses correct parent transform
-        hip_bone.calc_world_pos(hip_bone.parent.globalPos, hip_bone.parent.globalQuat)
-        
-        # --- Calculate Knee Rotation ---
-        # 1. Determine local bone rest direction
-        v_lower_rest_local = ankle_bone.zeroPos - knee_bone.zeroPos
-        norm_lower = np.linalg.norm(v_lower_rest_local)
-        if norm_lower > 1e-6:
-            v_lower_rest_local /= norm_lower
-        else:
-            v_lower_rest_local = np.array([0, -1, 0])
-            
-        # 2. Convert target to parent (Hip Global) space
-        # Note: Knee's parent is Hip
-        v_lower_target_global = target_pos - target_knee_pos_global
-        
-        hip_global_rot = R.from_quat(hip_bone.globalQuat)
-        v_lower_target_local = hip_global_rot.inv().apply(v_lower_target_global)
-        
-        # 3. Calculate knee local rotation
-        knee_rotation = calculate_rotation_between_vectors(v_lower_rest_local, v_lower_target_local)
-        knee_bone.quat = knee_rotation.as_quat()
-        
+        # Tip = the ankle, as a fixed offset in the knee's local frame (rest knee
+        # rotation is identity). The hinge solver places this point at the foot-IK
+        # target; the ankle's own (keyframed) orientation is left untouched.
+        tip_local = ankle_bone.zeroPos - knee_bone.zeroPos
+        solve_nonplanar_2bone_ik(hip_bone, knee_bone, tip_local,
+                                 KNEE_BEND_AXIS_LOCAL, target_pos)
     except Exception as e:
         print(f"Warning: IK failed for {side.lower()} leg: {e}")
